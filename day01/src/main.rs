@@ -1,6 +1,7 @@
-use std::{collections::HashMap, ops::Index};
+use std::cmp::Ordering;
 
 use log::{debug, info};
+use phf::phf_map;
 
 fn main() {
     aoc::init_logging();
@@ -18,75 +19,65 @@ fn part1(lines: &[String]) {
 }
 
 fn parse_line(line: &str) -> u32 {
-    let first = line
-        .chars()
-        .filter(|c| c.is_digit(10))
-        .next()
-        .unwrap()
-        .to_digit(10)
-        .unwrap()
-        * 10;
-    let last = line
-        .chars()
-        .rev()
-        .filter(|c| c.is_digit(10))
-        .next()
-        .unwrap()
-        .to_digit(10)
-        .unwrap();
-    first + last
+    let first = first_digit(line.chars());
+    let last = first_digit(line.chars().rev());
+    first * 10 + last
 }
 
-fn part2(lines: &[String]) {
-    let words: HashMap<String, u32> = HashMap::from([
-        ("one".to_string(), 1),
-        ("two".to_string(), 2),
-        ("three".to_string(), 3),
-        ("four".to_string(), 4),
-        ("five".to_string(), 5),
-        ("six".to_string(), 6),
-        ("seven".to_string(), 7),
-        ("eight".to_string(), 8),
-        ("nine".to_string(), 9),
-    ]);
+fn first_digit(mut chars: impl Iterator<Item = char>) -> u32 {
+    chars
+        .find(|c| c.is_ascii_digit())
+        .and_then(|c| c.to_digit(10))
+        .unwrap()
+}
 
-    let sum = lines
-        .iter()
-        .map(|s| parse_line_with_words(s, &words))
-        .sum::<u32>();
+static WORDS: phf::Map<&'static str, u32> = phf_map! {
+    "one" => 1,
+    "two" => 2,
+    "three" => 3,
+    "four" => 4,
+    "five" => 5,
+    "six" => 6,
+    "seven" => 7,
+    "eight" => 8,
+    "nine" => 9,
+};
+
+fn part2(lines: &[String]) {
+    let sum = lines.iter().map(|s| parse_line_with_words(s)).sum::<u32>();
     info!("Part 2: {sum}");
 }
 
-fn parse_line_with_words(line: &str, words: &HashMap<String, u32>) -> u32 {
-    let first_word_index = words
+fn parse_line_with_words(line: &str) -> u32 {
+    let first_word_index = WORDS
         .keys()
         .filter_map(|word| line.match_indices(word).next())
         .min();
-    let last_word_index = words
+    let last_word_index = WORDS
         .keys()
         .filter_map(|word| line.match_indices(word).last())
         .max();
 
-    let first_digit_index = line.chars().position(|c| c.is_digit(10));
+    let first_digit_index = line.chars().position(|c| c.is_ascii_digit());
     let first_digit = first_digit_index.map(|i| {
         line.chars()
             .nth(i)
             .map(|c| (i, c.to_digit(10).unwrap()))
             .unwrap()
     });
-    let first = get_value_first(first_word_index, first_digit, words);
+    let first = get_value(first_word_index, first_digit, |a, b| a < b);
     let last_digit_index = line
         .chars()
         .collect::<Vec<char>>()
         .iter()
-        .rposition(|c| c.is_digit(10));
+        .rposition(|c| c.is_ascii_digit());
     let last_digit = last_digit_index.map(|i| {
         line.chars()
             .nth(i)
             .map(|c| (i, c.to_digit(10).unwrap()))
             .unwrap()
     });
-    let last = get_value_last(last_word_index, last_digit, words);
+    let last = get_value(last_word_index, last_digit, |a, b| a > b);
 
     debug!(
         "{line} first: {} {:?} {:?} last: {} {:?} {:?}",
@@ -98,57 +89,28 @@ fn parse_line_with_words(line: &str, words: &HashMap<String, u32>) -> u32 {
         last_word_index.map(|w| w.1)
     );
 
-    //let last = line.chars().rev().filter(|c| c.is_digit(10)).next().unwrap().to_digit(10).unwrap();
-    //first + last
     first * 10 + last
 }
 
-fn get_value_first(
+fn get_value(
     first_word_index: Option<(usize, &str)>,
     first_digit: Option<(usize, u32)>,
-    words: &HashMap<String, u32>,
+    ordering: fn(usize, usize) -> bool,
 ) -> u32 {
-    let first_word_index = first_word_index.map(|(i, w)| (i, words[w]));
-    if let Some(word_pos) = first_word_index.map(|w| w.0) {
-        if let Some(digit_pos) = first_digit.map(|d| d.0) {
-            if word_pos < digit_pos {
-                first_word_index.unwrap().1
+    let first_word_index = first_word_index.map(|(i, w)| (i, WORDS[w]));
+    if let Some((word_pos, word_value)) = first_word_index {
+        if let Some((digit_pos, digit_value)) = first_digit {
+            if ordering(word_pos, digit_pos) {
+                word_value
             } else {
-                first_digit.unwrap().1
+                digit_value
             }
         } else {
-            first_word_index.unwrap().1
+            word_value
         }
+    } else if let Some((_, digit)) = first_digit {
+        digit
     } else {
-        if let Some(digit) = first_digit.map(|d| d.1) {
-            digit
-        } else {
-            panic!("No digit or number word on line.")
-        }
-    }
-}
-
-fn get_value_last(
-    first_word_index: Option<(usize, &str)>,
-    first_digit: Option<(usize, u32)>,
-    words: &HashMap<String, u32>,
-) -> u32 {
-    let first_word_index = first_word_index.map(|(i, w)| (i, words[w]));
-    if let Some(word_pos) = first_word_index.map(|w| w.0) {
-        if let Some(digit_pos) = first_digit.map(|d| d.0) {
-            if word_pos > digit_pos {
-                first_word_index.unwrap().1
-            } else {
-                first_digit.unwrap().1
-            }
-        } else {
-            first_word_index.unwrap().1
-        }
-    } else {
-        if let Some(digit) = first_digit.map(|d| d.1) {
-            digit
-        } else {
-            panic!("No digit or number word on line.")
-        }
+        panic!("No digit or number word on line.")
     }
 }
