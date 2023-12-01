@@ -53,31 +53,25 @@ fn parse_line_with_words(line: &str) -> u32 {
         .keys()
         .filter_map(|word| line.match_indices(word).next())
         .min();
+    let first_digit_index = line
+        .chars()
+        .position(|c| c.is_ascii_digit())
+        .expect("No digit on line");
+    let first_digit = get_digit(line, first_digit_index);
+    let first = get_value(first_word_index, first_digit, Ordering::Less);
+
     let last_word_index = WORDS
         .keys()
         .filter_map(|word| line.match_indices(word).last())
         .max();
-
-    let first_digit_index = line.chars().position(|c| c.is_ascii_digit());
-    let first_digit = first_digit_index.map(|i| {
-        line.chars()
-            .nth(i)
-            .map(|c| (i, c.to_digit(10).unwrap()))
-            .unwrap()
-    });
-    let first = get_value(first_word_index, first_digit, |a, b| a < b);
     let last_digit_index = line
         .chars()
         .collect::<Vec<char>>()
         .iter()
-        .rposition(|c| c.is_ascii_digit());
-    let last_digit = last_digit_index.map(|i| {
-        line.chars()
-            .nth(i)
-            .map(|c| (i, c.to_digit(10).unwrap()))
-            .unwrap()
-    });
-    let last = get_value(last_word_index, last_digit, |a, b| a > b);
+        .rposition(|c| c.is_ascii_digit())
+        .expect("No digit on line");
+    let last_digit = get_digit(line, last_digit_index);
+    let last = get_value(last_word_index, last_digit, Ordering::Greater);
 
     debug!(
         "{line} first: {} {:?} {:?} last: {} {:?} {:?}",
@@ -92,25 +86,15 @@ fn parse_line_with_words(line: &str) -> u32 {
     first * 10 + last
 }
 
-fn get_value(
-    first_word_index: Option<(usize, &str)>,
-    first_digit: Option<(usize, u32)>,
-    ordering: fn(usize, usize) -> bool,
-) -> u32 {
-    let first_word_index = first_word_index.map(|(i, w)| (i, WORDS[w]));
-    if let Some((word_pos, word_value)) = first_word_index {
-        if let Some((digit_pos, digit_value)) = first_digit {
-            if ordering(word_pos, digit_pos) {
-                word_value
-            } else {
-                digit_value
-            }
-        } else {
-            word_value
-        }
-    } else if let Some((_, digit)) = first_digit {
-        digit
-    } else {
-        panic!("No digit or number word on line.")
-    }
+fn get_digit(line: &str, digit_index: usize) -> (usize, u32) {
+    line.chars()
+        .nth(digit_index)
+        .map(|c| (digit_index, c.to_digit(10).unwrap()))
+        .unwrap()
+}
+
+fn get_value(word: Option<(usize, &str)>, digit: (usize, u32), ordering: Ordering) -> u32 {
+    word.filter(|(i, _)| i.cmp(&digit.0) == ordering)
+        .map(|(_, value)| WORDS[value])
+        .unwrap_or(digit.1)
 }
