@@ -1,5 +1,4 @@
 use log::{debug, info};
-use phf::phf_map;
 
 fn main() {
     aoc::init_logging();
@@ -11,7 +10,7 @@ fn main() {
 }
 
 fn part1(lines: &[String]) {
-    let sum = lines.iter().map(|s| parse_line(&s)).sum::<u32>();
+    let sum = lines.iter().map(|s| parse_line(s)).sum::<u32>();
     info!("Part 1: {sum}");
 }
 
@@ -28,41 +27,45 @@ fn first_digit(mut chars: impl Iterator<Item = char>) -> u32 {
         .unwrap()
 }
 
-static WORDS: phf::Map<&'static str, u32> = phf_map! {
-    "one" => 1,
-    "two" => 2,
-    "three" => 3,
-    "four" => 4,
-    "five" => 5,
-    "six" => 6,
-    "seven" => 7,
-    "eight" => 8,
-    "nine" => 9,
-};
-
-const DIGITS: [char; 9] = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+const WORDS: [(u32, &str); 18] = [
+    (1, "one"),
+    (2, "two"),
+    (3, "three"),
+    (4, "four"),
+    (5, "five"),
+    (6, "six"),
+    (7, "seven"),
+    (8, "eight"),
+    (9, "nine"),
+    (1, "1"),
+    (2, "2"),
+    (3, "3"),
+    (4, "4"),
+    (5, "5"),
+    (6, "6"),
+    (7, "7"),
+    (8, "8"),
+    (9, "9"),
+];
 
 fn part2(lines: &[String]) {
-    let sum = lines.iter().map(|s| parse_line_with_words(&s)).sum::<u32>();
+    let sum = lines.iter().map(|s| parse_line_with_words(s)).sum::<u32>();
     info!("Part 2: {sum}");
 }
 
 fn parse_line_with_words(line: &str) -> u32 {
-    let mut word_indexes = WORDS
-        .keys()
-        .flat_map(|word| line.match_indices(word))
-        .map(|word| (word.0, WORDS[word.1]))
+    let indexes = WORDS
+        .iter()
+        .flat_map(|(i, word)| line.match_indices(word).map(|w| (w.0, *i)))
         .collect::<Vec<_>>();
-    let mut digit_indexes = line
-        .match_indices(DIGITS)
-        .map(|digit| (digit.0, digit.1.parse::<u32>().unwrap()))
-        .collect::<Vec<_>>();
-    word_indexes.append(&mut digit_indexes);
 
-    let first = word_indexes.iter().min().expect("No digit on line").1;
-    let last = word_indexes.iter().max().expect("No digit on line").1;
+    let first = indexes.iter().min().expect("No digit on line").1;
+    let last = indexes.iter().max().expect("No digit on line").1;
 
-    debug!("{line} first: {} last: {} ", first, last,);
+    debug!(
+        "{line} first: {} last: {} indexes: {:?}",
+        first, last, indexes
+    );
 
     first * 10 + last
 }
