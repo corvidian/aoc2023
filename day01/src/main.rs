@@ -43,6 +43,8 @@ static WORDS: phf::Map<&'static str, u32> = phf_map! {
     "nine" => 9,
 };
 
+const DIGITS: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
 fn part2(lines: &[String]) {
     let sum = lines.iter().map(|s| parse_line_with_words(s)).sum::<u32>();
     info!("Part 2: {sum}");
@@ -53,24 +55,16 @@ fn parse_line_with_words(line: &str) -> u32 {
         .keys()
         .filter_map(|word| line.match_indices(word).next())
         .min();
-    let first_digit_index = line
-        .chars()
-        .position(|c| c.is_ascii_digit())
-        .expect("No digit on line");
-    let first_digit = get_digit(line, first_digit_index);
+    let first_digit_index = line.match_indices(DIGITS).next().expect("No digit on line");
+    let first_digit = get_digit(first_digit_index);
     let first = get_value(first_word_index, first_digit, Ordering::Less);
 
     let last_word_index = WORDS
         .keys()
         .filter_map(|word| line.match_indices(word).last())
         .max();
-    let last_digit_index = line
-        .chars()
-        .collect::<Vec<char>>()
-        .iter()
-        .rposition(|c| c.is_ascii_digit())
-        .expect("No digit on line");
-    let last_digit = get_digit(line, last_digit_index);
+    let last_digit_index = line.match_indices(DIGITS).last().expect("No digit on line");
+    let last_digit = get_digit(last_digit_index);
     let last = get_value(last_word_index, last_digit, Ordering::Greater);
 
     debug!(
@@ -86,11 +80,8 @@ fn parse_line_with_words(line: &str) -> u32 {
     first * 10 + last
 }
 
-fn get_digit(line: &str, digit_index: usize) -> (usize, u32) {
-    line.chars()
-        .nth(digit_index)
-        .map(|c| (digit_index, c.to_digit(10).unwrap()))
-        .unwrap()
+fn get_digit(digit: (usize, &str)) -> (usize, u32) {
+    (digit.0, digit.1.parse::<u32>().unwrap())
 }
 
 fn get_value(word: Option<(usize, &str)>, digit: (usize, u32), ordering: Ordering) -> u32 {
