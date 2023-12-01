@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use log::{debug, info};
 use phf::phf_map;
 
@@ -9,12 +7,11 @@ fn main() {
     let lines = aoc::read_input_lines();
 
     part1(&lines);
-
     part2(&lines);
 }
 
 fn part1(lines: &[String]) {
-    let sum = lines.iter().map(|s| parse_line(s)).sum::<u32>();
+    let sum = lines.iter().map(|s| parse_line(&s)).sum::<u32>();
     info!("Part 1: {sum}");
 }
 
@@ -43,49 +40,29 @@ static WORDS: phf::Map<&'static str, u32> = phf_map! {
     "nine" => 9,
 };
 
-const DIGITS: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+const DIGITS: [char; 9] = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 fn part2(lines: &[String]) {
-    let sum = lines.iter().map(|s| parse_line_with_words(s)).sum::<u32>();
+    let sum = lines.iter().map(|s| parse_line_with_words(&s)).sum::<u32>();
     info!("Part 2: {sum}");
 }
 
 fn parse_line_with_words(line: &str) -> u32 {
-    let first_word_index = WORDS
+    let mut word_indexes = WORDS
         .keys()
-        .filter_map(|word| line.match_indices(word).next())
-        .min();
-    let first_digit_index = line.match_indices(DIGITS).next().expect("No digit on line");
-    let first_digit = get_digit(first_digit_index);
-    let first = get_value(first_word_index, first_digit, Ordering::Less);
+        .flat_map(|word| line.match_indices(word))
+        .map(|word| (word.0, WORDS[word.1]))
+        .collect::<Vec<_>>();
+    let mut digit_indexes = line
+        .match_indices(DIGITS)
+        .map(|digit| (digit.0, digit.1.parse::<u32>().unwrap()))
+        .collect::<Vec<_>>();
+    word_indexes.append(&mut digit_indexes);
 
-    let last_word_index = WORDS
-        .keys()
-        .filter_map(|word| line.match_indices(word).last())
-        .max();
-    let last_digit_index = line.match_indices(DIGITS).last().expect("No digit on line");
-    let last_digit = get_digit(last_digit_index);
-    let last = get_value(last_word_index, last_digit, Ordering::Greater);
+    let first = word_indexes.iter().min().expect("No digit on line").1;
+    let last = word_indexes.iter().max().expect("No digit on line").1;
 
-    debug!(
-        "{line} first: {} {:?} {:?} last: {} {:?} {:?}",
-        first,
-        first_word_index.map(|w| w.0),
-        first_word_index.map(|w| w.1),
-        last,
-        last_word_index.map(|w| w.0),
-        last_word_index.map(|w| w.1)
-    );
+    debug!("{line} first: {} last: {} ", first, last,);
 
     first * 10 + last
-}
-
-fn get_digit(digit: (usize, &str)) -> (usize, u32) {
-    (digit.0, digit.1.parse::<u32>().unwrap())
-}
-
-fn get_value(word: Option<(usize, &str)>, digit: (usize, u32), ordering: Ordering) -> u32 {
-    word.filter(|(i, _)| i.cmp(&digit.0) == ordering)
-        .map(|(_, value)| WORDS[value])
-        .unwrap_or(digit.1)
 }
