@@ -16,7 +16,7 @@ fn part1(lines: &[String]) {
         .iter()
         .map(|line| parse_line(line))
         .collect::<Vec<[u32; 3]>>();
-    debug! {"{maxes:?}"};
+    debug! {"Maxes: {maxes:?}"};
 
     let sum: usize = maxes
         .iter()
@@ -28,40 +28,22 @@ fn part1(lines: &[String]) {
     info!("Part 1: {sum}");
 }
 
+fn find_max_for_color(line: &str, color: &str) -> u32 {
+    let formatted = format!(r"(\d+) {color}");
+    let re = Regex::new(formatted.as_str()).unwrap();
+
+    re.captures_iter(line)
+        .map(|c| c.extract())
+        .map(|(_, [red])| red.parse::<u32>().unwrap())
+        .max()
+        .expect("No color {color} on line")
+}
+
 fn parse_line(line: &str) -> [u32; 3] {
     debug! {"{line}"};
-    let re_red = Regex::new(r"(\d+) red").unwrap();
-    let mut max_red = 0u32;
-    let re_blue = Regex::new(r"(\d+) blue").unwrap();
-    let mut max_blue = 0u32;
-    let re_green = Regex::new(r"(\d+) green").unwrap();
-    let mut max_green = 0u32;
-    for (_, [red]) in re_red.captures_iter(line).map(|c| c.extract()) {
-        let red = red.parse::<u32>().unwrap();
-        debug!("Red: {red}");
-        if red > max_red {
-            max_red = red;
-        }
-    }
-    debug!("Max Red: {max_red}");
-
-    for (_, [green]) in re_green.captures_iter(line).map(|c| c.extract()) {
-        let green = green.parse::<u32>().unwrap();
-        debug!("green: {green}");
-        if green > max_green {
-            max_green = green;
-        }
-    }
-    debug!("Max green: {max_green}");
-
-    for (_, [blue]) in re_blue.captures_iter(line).map(|c| c.extract()) {
-        let blue = blue.parse::<u32>().unwrap();
-        debug!("blue: {blue}");
-        if blue > max_blue {
-            max_blue = blue;
-        }
-    }
-    debug!("Max blue: {max_blue}");
+    let max_red = find_max_for_color(line, "red");
+    let max_blue = find_max_for_color(line, "blue");
+    let max_green = find_max_for_color(line, "green");
 
     [max_red, max_green, max_blue]
 }
