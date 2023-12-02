@@ -1,4 +1,4 @@
-use log::{debug, info};
+use log::info;
 use regex::Regex;
 
 fn main() {
@@ -7,7 +7,6 @@ fn main() {
     let maxes = aoc::input_lines()
         .map(|line| parse_line(&line))
         .collect::<Vec<[u32; 3]>>();
-    debug! {"Maxes: {maxes:?}"};
 
     info!("Part 1: {}", part1(&maxes));
     info!("Part 2: {}", part2(&maxes));
@@ -27,7 +26,6 @@ fn part2(maxes: &[[u32; 3]]) -> u32 {
 }
 
 fn parse_line(line: &str) -> [u32; 3] {
-    debug! {"{line}"};
     let max_red = find_max_for_color(line, "red");
     let max_blue = find_max_for_color(line, "blue");
     let max_green = find_max_for_color(line, "green");
