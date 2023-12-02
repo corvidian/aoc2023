@@ -9,30 +9,21 @@ fn main() {
         .collect::<Vec<[u32; 3]>>();
     debug! {"Maxes: {maxes:?}"};
 
-    part1(&maxes);
-    part2(&maxes);
+    info!("Part 1: {}", part1(&maxes));
+    info!("Part 2: {}", part2(&maxes));
 }
 
-fn part1(maxes: &[[u32; 3]]) {
-    let sum: usize = maxes
+fn part1(maxes: &[[u32; 3]]) -> usize {
+    maxes
         .iter()
         .enumerate()
         .filter(|(_, [r, g, b])| *r <= 12 && *g <= 13 && *b <= 14)
         .map(|(i, _)| i + 1)
-        .sum();
-
-    info!("Part 1: {sum}");
+        .sum()
 }
 
-fn find_max_for_color(line: &str, color: &str) -> u32 {
-    let formatted = format!(r"(\d+) {color}");
-    let re = Regex::new(formatted.as_str()).unwrap();
-
-    re.captures_iter(line)
-        .map(|c| c.extract())
-        .map(|(_, [red])| red.parse::<u32>().unwrap())
-        .max()
-        .expect("No color {color} on line")
+fn part2(maxes: &[[u32; 3]]) -> u32 {
+    maxes.iter().map(|[r, g, b]| r * g * b).sum()
 }
 
 fn parse_line(line: &str) -> [u32; 3] {
@@ -44,8 +35,13 @@ fn parse_line(line: &str) -> [u32; 3] {
     [max_red, max_green, max_blue]
 }
 
-fn part2(maxes: &[[u32; 3]]) {
-    let sum: u32 = maxes.iter().map(|[r, g, b]| r * g * b).sum();
+fn find_max_for_color(line: &str, color: &str) -> u32 {
+    let formatted = format!(r"(\d+) {color}");
+    let re = Regex::new(formatted.as_str()).unwrap();
 
-    info!("Part 2: {sum}");
+    re.captures_iter(line)
+        .map(|c| c.extract())
+        .map(|(_, [red])| red.parse::<u32>().unwrap())
+        .max()
+        .expect("No color {color} on line")
 }
