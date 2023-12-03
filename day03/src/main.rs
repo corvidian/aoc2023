@@ -1,4 +1,4 @@
-use std::cmp::{max, min};
+use std::cmp::min;
 
 use log::{debug, info};
 
@@ -11,7 +11,7 @@ fn main() {
     let height = lines.len();
     let width = map[0].len();
 
-    //    part1(&map, height, width);
+    part1(&map, height, width);
 
     part2(&map, height, width);
 }
@@ -25,12 +25,12 @@ fn part1(map: &[Vec<char>], height: usize, width: usize) {
                 let (number, x2) = read_number(map, width, y, x);
                 let added = check_for_symbols(map, height, width, y, x, x2);
                 debug!("y: {y}, x:{x}, {x2}: {number} {added}");
-                if !added {
+                if added {
                     sum += number
                 }
                 x = x2;
             }
-            x = x + 1;
+            x += 1;
         }
     }
 
@@ -50,10 +50,10 @@ fn check_for_symbols(
     let start_x = x.saturating_sub(1);
     let end_x = min(x2 + 1, width - 1);
 
-    map[start_y..end_y + 1].iter().all(|row| {
+    map[start_y..end_y + 1].iter().any(|row| {
         row[start_x..end_x + 1]
             .iter()
-            .all(|c| c.is_ascii_digit() || *c == '.')
+            .any(|c| !c.is_ascii_digit() && *c != '.')
     })
 }
 
@@ -62,9 +62,8 @@ fn read_number(map: &[Vec<char>], width: usize, y: usize, x: usize) -> (i32, usi
     let mut chars: Vec<char> = vec![];
     while x < width && map[y][x].is_ascii_digit() {
         chars.push(map[y][x]);
-        x = x + 1;
+        x += 1;
     }
-    debug!("chars: {chars:?}, x: {x}");
     (
         chars.iter().collect::<String>().parse::<i32>().unwrap(),
         x - 1,
@@ -78,9 +77,9 @@ fn part2(map: &[Vec<char>], height: usize, width: usize) {
         while x < width {
             if map[y][x] == '*' {
                 debug!("Potential cog at {y}, {x}");
-                let is_cog = check_for_numbers(map, height, width, y, x);
-                debug!("is_cog {is_cog:?}");
-                sum += is_cog;
+                let gear_ratio = gear_ratio(map, height, width, y, x);
+                debug!("gear_ratio {gear_ratio:?}");
+                sum += gear_ratio;
             }
             x += 1;
         }
@@ -88,7 +87,7 @@ fn part2(map: &[Vec<char>], height: usize, width: usize) {
     info!("Part 2: {}", sum);
 }
 
-fn check_for_numbers(map: &[Vec<char>], height: usize, width: usize, y: usize, x: usize) -> i32 {
+fn gear_ratio(map: &[Vec<char>], height: usize, width: usize, y: usize, x: usize) -> i32 {
     let start_y = y.saturating_sub(1);
     let end_y = min(y + 1, height - 1);
     let start_x = x.saturating_sub(1);
@@ -101,8 +100,7 @@ fn check_for_numbers(map: &[Vec<char>], height: usize, width: usize, y: usize, x
         while x <= end_x {
             if map[y][x].is_ascii_digit() {
                 let mut number_start = x as i32;
-                while number_start - 1 >= 0 && map[y][(number_start - 1) as usize].is_ascii_digit()
-                {
+                while number_start > 0 && map[y][(number_start - 1) as usize].is_ascii_digit() {
                     number_start -= 1;
                 }
                 let (number, x2) = read_number(map, width, y, number_start as usize);
