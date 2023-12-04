@@ -1,6 +1,35 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Display};
 
-use log::info;
+use log::{debug, info};
+
+#[derive(Debug)]
+struct Cards {
+    winning_numbers: usize,
+    number_of_cards: usize,
+}
+
+impl Cards {
+    pub fn new(winning_numbers: usize) -> Cards {
+        Cards {
+            winning_numbers,
+            number_of_cards: 1,
+        }
+    }
+
+    pub fn add_cards(&mut self, amount: usize) {
+        self.number_of_cards += amount;
+    }
+}
+
+impl Display for Cards {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} cards with {} winning numbers",
+            self.number_of_cards, self.winning_numbers
+        )
+    }
+}
 
 fn main() {
     aoc::init_logging();
@@ -15,8 +44,8 @@ fn main() {
         .map(|(winning, having)| having.intersection(&winning).count())
         .collect::<Vec<_>>();
 
-    part1(&counts);
-    part2(&counts);
+    info!("Part 1: {}", part1(&counts));
+    info!("Part 2: {}", part2(&counts));
 }
 
 fn parse_numbers(list: &str) -> HashSet<u32> {
@@ -27,25 +56,27 @@ fn parse_numbers(list: &str) -> HashSet<u32> {
         .collect::<HashSet<_>>()
 }
 
-fn part1(counts: &[usize]) {
-    let cards: u32 = counts
+fn part1(counts: &[usize]) -> u32 {
+    counts
         .iter()
         .filter(|&count| *count > 0)
         .map(|&count| 2u32.pow(count as u32 - 1))
-        .sum();
-
-    info!("Part 1: {cards}");
+        .sum()
 }
 
-fn part2(counts: &[usize]) {
-    let mut cards: Vec<(usize, usize)> = counts.iter().map(|&count| (count, 1)).collect::<Vec<_>>();
+fn part2(counts: &[usize]) -> usize {
+    let mut cards: Vec<Cards> = counts
+        .iter()
+        .map(|&count| Cards::new(count))
+        .collect::<Vec<_>>();
 
     for i in 0..cards.len() {
-        for y in i + 1..i + 1 + cards[i].0 {
-            cards[y] = (cards[y].0, cards[y].1 + cards[i].1)
+        debug!("card: {:?}", cards[i]);
+        for y in i + 1..i + 1 + cards[i].winning_numbers {
+            let amount = cards[i].number_of_cards;
+            cards[y].add_cards(amount);
         }
     }
 
-    let sum: usize = cards.iter().map(|card| card.1).sum();
-    info!("Part 2: {sum}");
+    cards.iter().map(|card| card.number_of_cards).sum()
 }
