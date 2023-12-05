@@ -6,23 +6,21 @@ const EXAMPLE: &str = include_str!("../example.txt");
 fn main() {
     aoc::run_with_bench(INPUT, EXAMPLE, &|aoc| {
         let lines = aoc.read_input_lines();
-
-        (part1(&lines), part2(&lines))
+        let (seeds, groups) = parse_input(lines);
+        (part1(&seeds, &groups), part2(&seeds, &groups))
     });
 }
 
-fn part1(lines: &[&str]) -> u32 {
-    let (seeds, groups) = parse_input(lines);
-
+fn part1(seeds: &[u32], groups: &[Vec<Vec<u32>>]) -> u32 {
     seeds
         .iter()
-        .map(|seed| map_seed(*seed, &groups))
+        .map(|seed| map_seed(*seed, groups))
         .inspect(|dest| debug!("Destination: {dest}"))
         .min()
         .unwrap()
 }
 
-fn parse_input(lines: &[&str]) -> (Vec<u32>, Vec<Vec<Vec<u32>>>) {
+fn parse_input(lines: Vec<&str>) -> (Vec<u32>, Vec<Vec<Vec<u32>>>) {
     let seeds = parse_numbers(lines[0].split_once(':').unwrap().1);
     let mut y: usize = 3;
     let mut groups = vec![];
@@ -68,9 +66,7 @@ fn parse_numbers(list: &str) -> Vec<u32> {
         .collect::<Vec<_>>()
 }
 
-fn part2(lines: &[&str]) -> u32 {
-    let (seeds, groups) = parse_input(lines);
-
+fn part2(seeds: &[u32], groups: &[Vec<Vec<u32>>]) -> u32 {
     let mut min = u32::MAX;
     seeds.chunks_exact(2).for_each(|pair| {
         let new_seeds = expand_seeds(pair);
@@ -90,7 +86,11 @@ fn expand_seeds(orig_seeds: &[u32]) -> Vec<u32> {
     for i in orig_seeds[0]..orig_seeds[0] + orig_seeds[1] {
         new_seeds.push(i);
     }
-    debug!("for seeds in {:?}, {}", orig_seeds, new_seeds.len());
+    debug!(
+        "for seeds in {:?}, size of array is {}",
+        orig_seeds,
+        new_seeds.len()
+    );
 
     new_seeds
 }
