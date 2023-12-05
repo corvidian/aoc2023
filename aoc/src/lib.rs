@@ -1,13 +1,15 @@
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use std::time::Duration;
+use log::info;
 
 #[cfg(feature = "log")]
-pub mod log;
+pub mod log_config;
 
 #[cfg(feature = "log")]
 pub fn init_logging() {
-    log::init_logging(log::LevelFilter::Info, log::LevelFilter::Debug)
+    log_config::init_logging(log::LevelFilter::Info, log::LevelFilter::Debug)
 }
 
 #[cfg(not(feature = "log"))]
@@ -16,6 +18,80 @@ pub mod nolog;
 #[cfg(not(feature = "log"))]
 pub fn init_logging() {
     nolog::init().expect("Logger not initialized");
+}
+
+pub struct Aoc {
+    input: &'static str,
+    example: &'static str,
+}
+
+impl Aoc {
+    pub fn init(input: &'static str, example: &'static str) -> Aoc {
+        init_logging();
+        Aoc { input, example }
+    }
+
+    pub fn read_input_string(&self) -> &str {
+        self.get_input()
+    }
+
+    pub fn input_lines(&self) -> impl Iterator<Item = &str> {
+        self.get_input().lines()
+    }
+
+    pub fn read_input_lines(&self) -> Vec<&'static str> {
+        self.get_input().lines().collect()
+    }
+
+    fn get_input(&self) -> &'static str {
+        use std::env;
+        let input = env::args()
+            .nth(1)
+            .unwrap_or_else(|| "input.txt".to_string());
+
+        if input.starts_with("input") {
+            self.input
+        } else {
+            self.example
+        }
+    }
+}
+
+pub fn run_with_bench<F>(input: &'static str, example: &'static str, f: &F) -> Duration
+where
+    F: Fn(&Aoc) -> (u32, u32),
+{
+    let aoc = Aoc::init(input, example);
+    let now = ::std::time::Instant::now();
+    let (part1, part2) = f(&aoc);
+    let elapsed = now.elapsed();
+
+    info!("Part 1: {part1}");
+    info!("Part 2: {part2}");
+
+    
+        info!("Time: {:.3?}", elapsed);
+    elapsed
+}
+
+fn benchmark<F>(aoc: &Aoc, f: &F) -> Duration where F: Fn(&Aoc) -> (u32, u32), {
+    let now = ::std::time::Instant::now();
+    let (_,_) = f(aoc);
+    now.elapsed()
+}
+
+pub fn run_n_times<F>(n: usize, input: &'static str, example: &'static str, f: F)
+where
+    F: Fn(&Aoc) -> (u32, u32),
+{
+    let aoc = Aoc::init(input, example);
+    let mut elapsed = benchmark(&aoc, &f);
+    for _ in 1..n {
+        let dur = benchmark(&aoc, &f);
+        elapsed += dur;
+    }
+    info!("Time: {:.3?}", elapsed);
+    info!("Per execution: {:.3?}", elapsed/1000)
 }
 
 pub fn read_input_lines() -> Vec<String> {

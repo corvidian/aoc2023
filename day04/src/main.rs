@@ -1,6 +1,5 @@
+use log::debug;
 use std::{collections::HashSet, fmt::Display};
-
-use log::{debug, info};
 
 #[derive(Debug)]
 struct Cards {
@@ -31,36 +30,47 @@ impl Display for Cards {
     }
 }
 
+const INPUT: &str = include_str!("../input.txt");
+const EXAMPLE: &str = include_str!("../example.txt");
+
 fn main() {
-    aoc::init_logging();
+    aoc::run_with_bench(INPUT,EXAMPLE,&|aoc| {
+        let counts = counts(aoc.read_input_string());
+        let part1 = part1(&counts);
+        let part2 = part2(&counts);
+        (part1, part2 as u32)
+    });
 
-    let lines = aoc::read_input_lines();
+    // aoc::run_n_times(1000, INPUT, EXAMPLE, |aoc| {
+    //     let counts = counts(aoc.read_input_string());
+    //     let part1 = part1(&counts);
+    //     let part2 = part2(&counts);
+    //     (part1, part2 as u32)
+    // });
+}
 
-    let counts = lines
-        .iter()
-        .map(|line| line.split_once(':').unwrap().1)
-        .map(|line| line.split_once('|').unwrap())
-        .map(|(winning, having)| (parse_numbers(winning), parse_numbers(having)))
-        .map(|(winning, having)| having.intersection(&winning).count())
-        .collect::<Vec<_>>();
+fn counts(input: &str) -> Vec<usize> {
+    input.lines().map(count_wins).collect::<Vec<_>>()
+}
 
-    info!("Part 1: {}", part1(&counts));
-    info!("Part 2: {}", part2(&counts));
+fn count_wins(line: &str) -> usize {
+    let numbers = line.split_once(':').unwrap().1;
+    let (winning, having) = numbers.split_once('|').unwrap();
+    parse_numbers(having)
+        .intersection(&parse_numbers(winning))
+        .count()
 }
 
 fn parse_numbers(list: &str) -> HashSet<u32> {
-    list.trim()
-        .split(' ')
-        .filter(|n| !n.is_empty())
+    list.split_whitespace()
         .map(|n| n.parse::<u32>().expect("Not a number!"))
         .collect::<HashSet<_>>()
 }
 
-fn part1(counts: &[usize]) -> u32 {
+pub fn part1(counts: &[usize]) -> u32 {
     counts
         .iter()
-        .filter(|&count| *count > 0)
-        .map(|&count| 2u32.pow(count as u32 - 1))
+        .filter_map(|&count| 2u32.checked_pow(count as u32 - 1))
         .sum()
 }
 
@@ -79,4 +89,37 @@ fn part2(counts: &[usize]) -> usize {
     }
 
     cards.iter().map(|card| card.number_of_cards).sum()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn part1_with_example() {
+        let counts = counts(EXAMPLE);
+        let result = part1(&counts);
+        assert_eq!(result, 13);
+    }
+
+    #[test]
+    fn part2_with_example() {
+        let counts = counts(EXAMPLE);
+        let result = part2(&counts);
+        assert_eq!(result, 30);
+    }
+
+    #[test]
+    fn part1_with_input() {
+        let counts = counts(INPUT);
+        let result = part1(&counts);
+        assert_eq!(result, 28538);
+    }
+
+    #[test]
+    fn part2_with_input() {
+        let counts = counts(INPUT);
+        let result = part2(&counts);
+        assert_eq!(result, 9425061);
+    }
 }
