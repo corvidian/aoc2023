@@ -69,28 +69,14 @@ fn parse_numbers(list: &str) -> Vec<u32> {
 fn part2(seeds: &[u32], groups: &[Vec<Vec<u32>>]) -> u32 {
     let mut min = u32::MAX;
     seeds.chunks_exact(2).for_each(|pair| {
-        let new_seeds = expand_seeds(pair);
-        for seed in new_seeds {
+        debug!("for seeds in {:?}", pair);
+        for seed in pair[0]..pair[0] + pair[1] {
             let mapped = map_seed(seed, &groups);
             if mapped < min {
+                debug!("New min: {mapped} replaces old one {min}");
                 min = mapped
             }
         }
     });
     min
-}
-
-fn expand_seeds(orig_seeds: &[u32]) -> Vec<u32> {
-    let mut new_seeds = vec![];
-
-    for i in orig_seeds[0]..orig_seeds[0] + orig_seeds[1] {
-        new_seeds.push(i);
-    }
-    debug!(
-        "for seeds in {:?}, size of array is {}",
-        orig_seeds,
-        new_seeds.len()
-    );
-
-    new_seeds
 }
