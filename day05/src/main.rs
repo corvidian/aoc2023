@@ -1,4 +1,4 @@
-use log::{debug, info};
+use log::debug;
 
 const INPUT: &str = include_str!("../input.txt");
 const EXAMPLE: &str = include_str!("../example.txt");
@@ -12,6 +12,17 @@ fn main() {
 }
 
 fn part1(lines: &[&str]) -> u32 {
+    let (seeds, groups) = parse_input(lines);
+
+    seeds
+        .iter()
+        .map(|seed| map_seed(*seed, &groups))
+        .inspect(|dest| debug!("Destination: {dest}"))
+        .min()
+        .unwrap()
+}
+
+fn parse_input(lines: &[&str]) -> (Vec<u32>, Vec<Vec<Vec<u32>>>) {
     let seeds = parse_numbers(lines[0].split_once(':').unwrap().1);
     let mut y: usize = 3;
     let mut groups = vec![];
@@ -28,19 +39,13 @@ fn part1(lines: &[&str]) -> u32 {
     }
     groups.push(group);
     debug!("{groups:?}");
-
-    seeds
-        .iter()
-        .map(|seed| map_seed(*seed, &groups))
-        .inspect(|dest| debug!("Destination: {dest}"))
-        .min()
-        .unwrap()
+    (seeds, groups)
 }
 
 fn map_seed(seed: u32, groups: &[Vec<Vec<u32>>]) -> u32 {
     groups
         .iter()
-        .fold(seed, |seed, group| map_seed_in_group(seed, &group))
+        .fold(seed, |seed, group| map_seed_in_group(seed, group))
 }
 
 fn map_seed_in_group(seed: u32, group: &[Vec<u32>]) -> u32 {
@@ -54,7 +59,7 @@ fn map_seed_in_group(seed: u32, group: &[Vec<u32>]) -> u32 {
         }
     }
     //debug!("Seed stays: {seed}");
-    return seed;
+    seed
 }
 
 fn parse_numbers(list: &str) -> Vec<u32> {
@@ -64,22 +69,7 @@ fn parse_numbers(list: &str) -> Vec<u32> {
 }
 
 fn part2(lines: &[&str]) -> u32 {
-    let seeds = parse_numbers(lines[0].split_once(':').unwrap().1);
-    let mut y: usize = 3;
-    let mut groups = vec![];
-    let mut group = vec![];
-    while y < lines.len() {
-        if lines[y].chars().next().is_some() {
-            group.push(parse_numbers(lines[y]));
-            y += 1;
-        } else {
-            groups.push(group);
-            group = vec![];
-            y += 2;
-        }
-    }
-    groups.push(group);
-    debug!("{groups:?}");
+    let (seeds, groups) = parse_input(lines);
 
     let mut min = u32::MAX;
     seeds.chunks_exact(2).for_each(|pair| {
