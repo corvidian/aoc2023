@@ -1,7 +1,9 @@
 use log::info;
+use std::collections::HashSet;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use std::str::FromStr;
 use std::time::Duration;
 
 #[cfg(feature = "log")]
@@ -108,6 +110,49 @@ pub fn read_and_split(pattern: &str) -> (String, String) {
     let input = read_input_string();
     let a = input.split_once(pattern).expect("Split pattern not found");
     (a.0.to_owned(), a.1.to_owned())
+}
+
+/// Parse numbers for a list separated with whitespace.
+/// ```
+/// # use aoc::parse_numbers;
+/// assert_eq!(parse_numbers::<u64, Vec<_>>(" 9  40  200"), [9,40,200]);
+/// ```
+pub fn parse_numbers<T, C>(list: &str) -> C
+where
+    T: FromStr,
+    <T as FromStr>::Err: core::fmt::Debug,
+    C: std::iter::FromIterator<T>,
+{
+    list.split_whitespace()
+        .map(|n| n.parse::<T>().expect("Not a number!"))
+        .collect::<C>()
+}
+
+/// Parse numbers for a list separated with whitespace into a vector.
+/// ```
+/// # use aoc::parse_numbers_vec;
+/// assert_eq!(parse_numbers_vec::<u64>(" 9  40  200"), [9,40,200]);
+/// ```
+pub fn parse_numbers_vec<T>(list: &str) -> Vec<T>
+where
+    T: FromStr,
+    <T as FromStr>::Err: core::fmt::Debug,
+{
+    parse_numbers::<T, Vec<_>>(list)
+}
+
+/// Parse numbers for a list separated with whitespace into a set.
+/// ```
+/// # use aoc::parse_numbers_set;
+/// # use std::collections::HashSet;
+/// assert_eq!(parse_numbers_set::<u64>(" 9  40  200"),  HashSet::from([9,40,200]));
+/// ```
+pub fn parse_numbers_set<T>(list: &str) -> HashSet<T>
+where
+    T: FromStr + std::hash::Hash + std::cmp::Eq,
+    <T as FromStr>::Err: core::fmt::Debug,
+{
+    parse_numbers::<T, HashSet<_>>(list)
 }
 
 fn get_filename() -> String {

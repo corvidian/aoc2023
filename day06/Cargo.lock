@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "day01"
+name = "day06"
 version = "0.1.0"
 dependencies = [
  "aoc",

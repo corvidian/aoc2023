@@ -1,5 +1,6 @@
+use aoc::parse_numbers_set;
 use log::debug;
-use std::{collections::HashSet, fmt::Display};
+use std::fmt::Display;
 
 #[derive(Debug)]
 struct Cards {
@@ -34,7 +35,7 @@ const INPUT: &str = include_str!("../input.txt");
 const EXAMPLE: &str = include_str!("../example.txt");
 
 fn main() {
-    aoc::run_with_bench(INPUT,EXAMPLE,&|aoc| {
+    aoc::run_with_bench(INPUT, EXAMPLE, &|aoc| {
         let counts = counts(aoc.read_input_string());
         let part1 = part1(&counts);
         let part2 = part2(&counts);
@@ -56,15 +57,9 @@ fn counts(input: &str) -> Vec<usize> {
 fn count_wins(line: &str) -> usize {
     let numbers = line.split_once(':').unwrap().1;
     let (winning, having) = numbers.split_once('|').unwrap();
-    parse_numbers(having)
-        .intersection(&parse_numbers(winning))
+    parse_numbers_set::<u32>(having)
+        .intersection(&parse_numbers_set(winning))
         .count()
-}
-
-fn parse_numbers(list: &str) -> HashSet<u32> {
-    list.split_whitespace()
-        .map(|n| n.parse::<u32>().expect("Not a number!"))
-        .collect::<HashSet<_>>()
 }
 
 pub fn part1(counts: &[usize]) -> u32 {
