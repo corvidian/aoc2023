@@ -1,5 +1,3 @@
-use log::{debug, info};
-
 const INPUT: &str = include_str!("../input.txt");
 const EXAMPLE: &str = include_str!("../example.txt");
 
@@ -14,19 +12,17 @@ fn main() {
 fn part1(lines: &[&str]) -> u32 {
     let times = parse_numbers(lines[0].split_once(':').unwrap().1);
     let distances = parse_numbers(lines[1].split_once(':').unwrap().1);
-    times.iter().zip(distances).map(|(time, distance)|count_win_strategies(*time,distance) ).product()
+    times
+        .iter()
+        .zip(distances)
+        .map(|(time, distance)| count_win_strategies(*time, distance))
+        .product()
 }
 
-fn count_win_strategies(time: u64,record_distance:  u64) -> u32 {
-    let mut wins = 0;
-    for button_time in 1..time {
-        let speed = button_time;
-        let distance = speed * (time - button_time);
-        if distance > record_distance {
-            wins += 1;
-        }
-    }
-    return wins;
+fn count_win_strategies(time: u64, record_distance: u64) -> u32 {
+    (1..time)
+        .filter(|button_time| (button_time * (time - button_time)) > record_distance)
+        .count() as u32
 }
 
 fn parse_numbers(list: &str) -> Vec<u64> {
@@ -35,6 +31,12 @@ fn parse_numbers(list: &str) -> Vec<u64> {
         .collect::<Vec<_>>()
 }
 
-fn part2(_lines: &[&str]) -> u32 {
-    0
+fn part2(lines: &[&str]) -> u32 {
+    let time = concat_numbers(lines[0].split_once(':').unwrap().1);
+    let distance = concat_numbers(lines[1].split_once(':').unwrap().1);
+    count_win_strategies(time, distance)
+}
+
+fn concat_numbers(list: &str) -> u64 {
+    list.replace(' ', "").parse::<u64>().expect("Not a number!")
 }
