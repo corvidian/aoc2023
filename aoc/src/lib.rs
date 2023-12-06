@@ -1,8 +1,8 @@
+use log::info;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::time::Duration;
-use log::info;
 
 #[cfg(feature = "log")]
 pub mod log_config;
@@ -69,14 +69,16 @@ where
     info!("Part 1: {part1}");
     info!("Part 2: {part2}");
 
-    
-        info!("Time: {:.3?}", elapsed);
+    info!("Time: {:.3?}", elapsed);
     elapsed
 }
 
-fn benchmark<F>(aoc: &Aoc, f: &F) -> Duration where F: Fn(&Aoc) -> (u32, u32), {
+fn benchmark<F>(aoc: &Aoc, f: &F) -> Duration
+where
+    F: Fn(&Aoc) -> (u32, u32),
+{
     let now = ::std::time::Instant::now();
-    let (_,_) = f(aoc);
+    let (_, _) = f(aoc);
     now.elapsed()
 }
 
@@ -91,7 +93,7 @@ where
         elapsed += dur;
     }
     info!("Time: {:.3?}", elapsed);
-    info!("Per execution: {:.3?}", elapsed/1000)
+    info!("Per execution: {:.3?}", elapsed / 1000)
 }
 
 pub fn read_input_lines() -> Vec<String> {
