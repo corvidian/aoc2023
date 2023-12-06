@@ -20,9 +20,25 @@ fn part1(lines: &[&str]) -> u32 {
 }
 
 fn count_win_strategies(time: u64, record_distance: u64) -> u32 {
-    (1..time)
-        .filter(|button_time| (button_time * (time - button_time)) > record_distance)
-        .count() as u32
+    // The equation for checking if a particular time of button-pressing leads to a new record is:
+    // button_time * (time - button_time) > record_distance
+    // Solving for button_time gives us:
+    // time/2 - sqrt((time/2)^2 - record_distance) < button_time < time/2 + sqrt((time/2)^2 - record_distance)
+
+    // Solve the roots of the paraboloid:
+    let b = time as f64;
+    let c = record_distance as f64;
+    let half_b = b / 2f64;
+    let root = (half_b * half_b - c).sqrt();
+    let x1 = half_b - root;
+    let x2 = half_b + root;
+
+    // Count only inside the roots, excluding the roots if they are integer:
+    let start = x1.floor() as u64 + 1;
+    let end = x2.ceil() as u64 - 1;
+
+    // Include both start and end, so + 1
+    (end - start + 1) as u32
 }
 
 fn parse_numbers(list: &str) -> Vec<u64> {
