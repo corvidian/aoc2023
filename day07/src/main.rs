@@ -109,12 +109,12 @@ impl FromStr for HandWithJacks {
 
 impl HandRank {
     fn get_rank(sorted_cards: &[u8]) -> HandRank {
-        let mut runs: Vec<(u8, usize)> = Vec::new();
-        for (key, group) in &sorted_cards.iter().group_by(|card| *card) {
-            runs.push((*key, group.count()));
+        let mut runs: Vec<usize> = Vec::new();
+        for (_, group) in &sorted_cards.iter().group_by(|card| *card) {
+            runs.push(group.count());
         }
-        runs.sort_by(|a, b| b.1.cmp(&a.1));
-        match (runs.len(), runs[0].1) {
+        runs.sort_by(|a, b| b.cmp(&a));
+        match (runs.len(), runs[0]) {
             (1, _) => HandRank::FiveOfAKind,
             (2, 4) => HandRank::FourOfAKind,
             (2, _) => HandRank::FullHouse,
@@ -163,58 +163,47 @@ fn from_str(
     debug!("Number of jokers: {jokers}");
 
     let rank = match jokers {
-        1 => {
+        1 => find_highest_for_joker_position(&sorted_cards, &sorted_cards[jokers..], 0),
+        2 => {
             let mut highest = HandRank::HighCard;
-            for card in &sorted_cards[jokers..] {
-                let mut replaced = sorted_cards.clone();
-                replaced[0] = *card;
-                replaced.sort();
-                let rank = HandRank::get_rank(&replaced);
+            for card1 in &sorted_cards[jokers..] {
+                let mut replaced1 = sorted_cards.clone();
+                replaced1[0] = *card1;
+                let rank = find_highest_for_joker_position(&replaced1, &sorted_cards[jokers..], 1);
                 if rank > highest {
                     highest = rank;
                 }
             }
             highest
         }
-        2 => {
-            let mut highest = HandRank::HighCard;
-            for card1 in &sorted_cards[jokers..] {
-                for card2 in &sorted_cards[jokers..] {
-                    let mut replaced = sorted_cards.clone();
-                    replaced[0] = *card1;
-                    replaced[1] = *card2;
-                    replaced.sort();
-                    let rank = HandRank::get_rank(&replaced);
-                    if rank > highest {
-                        highest = rank;
-                    }
-                }
-            }
-            highest
-        }
         3 => {
-            let mut highest = HandRank::HighCard;
-            for card1 in &sorted_cards[jokers..] {
-                for card2 in &sorted_cards[jokers..] {
-                    for card3 in &sorted_cards[jokers..] {
-                        let mut replaced = sorted_cards.clone();
-                        replaced[0] = *card1;
-                        replaced[1] = *card2;
-                        replaced[2] = *card3;
-                        replaced.sort();
-                        let rank = HandRank::get_rank(&replaced);
-                        if rank > highest {
-                            highest = rank;
-                        }
-                    }
-                }
+            if sorted_cards[3] == sorted_cards[4] {
+                HandRank::FiveOfAKind
+            } else {
+                HandRank::FourOfAKind
             }
-            highest
         }
         4 | 5 => HandRank::FiveOfAKind,
         _ => HandRank::get_rank(&sorted_cards),
     };
     Ok((rank, cards))
+}
+
+fn find_highest_for_joker_position(
+    sorted_cards: &[u8],
+    non_jokers: &[u8],
+    joker_pos: usize,
+) -> HandRank {
+    non_jokers
+        .iter()
+        .map(|card| {
+            let mut replaced = sorted_cards.to_vec();
+            replaced[joker_pos] = *card;
+            replaced.sort();
+            HandRank::get_rank(&replaced)
+        })
+        .max()
+        .unwrap()
 }
 
 #[cfg(test)]
