@@ -41,13 +41,13 @@ fn part1(lines: &[&str]) -> u64 {
 
 #[derive(Ord, PartialEq, PartialOrd, Eq, Debug)]
 enum Hand {
-    HighCard(u8, u8, u8, u8, u8),
-    OnePair(u8, u8, u8, u8),
-    TwoPair(u8, u8, u8),
-    ThreeOfAKind(u8, u8, u8),
-    FullHouse(u8, u8),
-    FourOfAKind(u8, u8),
-    FiveOfAKind(u8),
+    HighCard(Vec<u8>),
+    OnePair(Vec<u8>),
+    TwoPair(Vec<u8>),
+    ThreeOfAKind(Vec<u8>),
+    FullHouse(Vec<u8>),
+    FourOfAKind(Vec<u8>),
+    FiveOfAKind(Vec<u8>),
 }
 
 #[derive(Debug)]
@@ -60,8 +60,9 @@ impl FromStr for Hand {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         debug!("Parsing {s}");
-        let mut cards = s.chars().map(get_card_value).collect::<Vec<_>>();
-        cards.sort_by(|a, b| b.cmp(a));
+        let cards = s.chars().map(get_card_value).collect::<Vec<_>>();
+        let mut sorted_cards = cards.clone();
+        sorted_cards.sort_by(|a, b| b.cmp(a));
 
         if cards.len() != 5 {
             return Err(HandParseError::NotFiveCards);
@@ -69,20 +70,18 @@ impl FromStr for Hand {
         debug!("Parsing {cards:?}");
 
         let mut runs: Vec<(u8, usize)> = Vec::new();
-        for (key, group) in &cards.into_iter().group_by(|card| *card) {
+        for (key, group) in &sorted_cards.into_iter().group_by(|card| *card) {
             runs.push((key, group.collect::<Vec<_>>().len()));
         }
         runs.sort_by(|a, b| b.1.cmp(&a.1));
         match (runs.len(), runs[0].1) {
-            (1, _) => Ok(Hand::FiveOfAKind(runs[0].0)),
-            (2, 4) => Ok(Hand::FourOfAKind(runs[0].0, runs[1].0)),
-            (2, _) => Ok(Hand::FullHouse(runs[0].0, runs[1].0)),
-            (3, 3) => Ok(Hand::ThreeOfAKind(runs[0].0, runs[1].0, runs[2].0)),
-            (3, _) => Ok(Hand::TwoPair(runs[0].0, runs[1].0, runs[2].0)),
-            (4, _) => Ok(Hand::OnePair(runs[0].0, runs[1].0, runs[2].0, runs[3].0)),
-            _ => Ok(Hand::HighCard(
-                runs[0].0, runs[1].0, runs[2].0, runs[3].0, runs[4].0,
-            )),
+            (1, _) => Ok(Hand::FiveOfAKind(cards)),
+            (2, 4) => Ok(Hand::FourOfAKind(cards)),
+            (2, _) => Ok(Hand::FullHouse(cards)),
+            (3, 3) => Ok(Hand::ThreeOfAKind(cards)),
+            (3, _) => Ok(Hand::TwoPair(cards)),
+            (4, _) => Ok(Hand::OnePair(cards)),
+            _ => Ok(Hand::HighCard(cards)),
         }
     }
 }

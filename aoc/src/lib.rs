@@ -61,7 +61,7 @@ impl Aoc {
 
 pub fn run_with_bench<F>(input: &'static str, example: &'static str, f: &F) -> Duration
 where
-    F: Fn(&Aoc) -> (u32, u32),
+    F: Fn(&Aoc) -> (u64, u64),
 {
     let aoc = Aoc::init(input, example);
     let now = ::std::time::Instant::now();
