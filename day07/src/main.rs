@@ -1,7 +1,8 @@
-use std::str::FromStr;
-
 use itertools::Itertools;
 use log::debug;
+use std::cmp::Ord;
+use std::fmt::Debug;
+use std::str::FromStr;
 
 const INPUT: &str = include_str!("../input.txt");
 const EXAMPLE: &str = include_str!("../example.txt");
@@ -10,17 +11,25 @@ fn main() {
     aoc::run_with_bench(INPUT, EXAMPLE, &|aoc| {
         let lines = aoc.read_input_lines();
 
-        (0, part1(&lines))
+        (
+            get_sum_of_bids::<HandWithJacks>(&lines),
+            get_sum_of_bids::<HandWithJokers>(&lines),
+        )
     });
 }
 
-fn part1(lines: &[&str]) -> u64 {
+fn get_sum_of_bids<T>(lines: &[&str]) -> u64
+where
+    T: Hand + FromStr + Debug + Ord,
+    <T as FromStr>::Err: Debug,
+{
+    debug!("Start of new part");
     let mut hands = lines
         .iter()
         .map(|line| line.split_once(' ').unwrap())
         .map(|(hand, bid)| {
             let bid = bid.parse::<u64>().expect("Bid not a number");
-            (hand.parse::<Hand>().unwrap(), bid)
+            (hand.parse::<T>().unwrap(), bid)
         })
         .inspect(|(hand, bid)| debug!("{hand:?} {bid}"))
         .collect::<Vec<_>>();
@@ -40,31 +49,79 @@ fn part1(lines: &[&str]) -> u64 {
 }
 
 #[derive(Ord, PartialEq, PartialOrd, Eq, Debug)]
-enum Hand {
-    HighCard(Vec<u8>),
-    OnePair(Vec<u8>),
-    TwoPair(Vec<u8>),
-    ThreeOfAKind(Vec<u8>),
-    FullHouse(Vec<u8>),
-    FourOfAKind(Vec<u8>),
-    FiveOfAKind(Vec<u8>),
+enum HandRank {
+    HighCard,
+    OnePair,
+    TwoPair,
+    ThreeOfAKind,
+    FullHouse,
+    FourOfAKind,
+    FiveOfAKind,
 }
 
-impl Hand {
-    fn get_hand(sorted_cards: &[u8], cards: Vec<u8>) -> Hand {
+trait Hand {
+    fn new(rank: HandRank, cards: Vec<u8>) -> Self;
+    fn get_card_value(c: char) -> Result<u8, HandParseError>;
+}
+
+#[derive(Ord, PartialEq, PartialOrd, Eq, Debug)]
+struct HandWithJokers(HandRank, Vec<u8>);
+
+impl Hand for HandWithJokers {
+    fn new(rank: HandRank, cards: Vec<u8>) -> Self {
+        Self(rank, cards)
+    }
+
+    fn get_card_value(c: char) -> Result<u8, HandParseError> {
+        get_card_value(c, 1)
+    }
+}
+
+impl FromStr for HandWithJokers {
+    type Err = HandParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let result = from_str(s, Self::get_card_value)?;
+        Ok(Self(result.0, result.1))
+    }
+}
+
+#[derive(Ord, PartialEq, PartialOrd, Eq, Debug)]
+struct HandWithJacks(HandRank, Vec<u8>);
+impl Hand for HandWithJacks {
+    fn new(rank: HandRank, cards: Vec<u8>) -> Self {
+        Self(rank, cards)
+    }
+
+    fn get_card_value(c: char) -> Result<u8, HandParseError> {
+        get_card_value(c, 11)
+    }
+}
+
+impl FromStr for HandWithJacks {
+    type Err = HandParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let result = from_str(s, Self::get_card_value)?;
+        Ok(Self(result.0, result.1))
+    }
+}
+
+impl HandRank {
+    fn get_rank(sorted_cards: &[u8]) -> HandRank {
         let mut runs: Vec<(u8, usize)> = Vec::new();
-        for (key, group) in &sorted_cards.into_iter().group_by(|card| *card) {
+        for (key, group) in &sorted_cards.iter().group_by(|card| *card) {
             runs.push((*key, group.count()));
         }
         runs.sort_by(|a, b| b.1.cmp(&a.1));
         match (runs.len(), runs[0].1) {
-            (1, _) => Hand::FiveOfAKind(cards),
-            (2, 4) => Hand::FourOfAKind(cards),
-            (2, _) => Hand::FullHouse(cards),
-            (3, 3) => Hand::ThreeOfAKind(cards),
-            (3, _) => Hand::TwoPair(cards),
-            (4, _) => Hand::OnePair(cards),
-            _ => Hand::HighCard(cards),
+            (1, _) => HandRank::FiveOfAKind,
+            (2, 4) => HandRank::FourOfAKind,
+            (2, _) => HandRank::FullHouse,
+            (3, 3) => HandRank::ThreeOfAKind,
+            (3, _) => HandRank::TwoPair,
+            (4, _) => HandRank::OnePair,
+            _ => HandRank::HighCard,
         }
     }
 }
@@ -72,99 +129,118 @@ impl Hand {
 #[derive(Debug)]
 enum HandParseError {
     NotFiveCards,
+    CardParseError(&'static str),
 }
 
-impl FromStr for Hand {
-    type Err = HandParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        debug!("Parsing {s}");
-        let cards = s.chars().map(get_card_value).collect::<Vec<_>>();
-        if cards.len() != 5 {
-            return Err(HandParseError::NotFiveCards);
-        }
-
-        if cards == &[1, 1, 1, 1, 1] {
-            return Ok(Hand::FiveOfAKind(cards));
-        }
-
-        let mut sorted_cards = cards.clone();
-        sorted_cards.sort();
-
-        debug!("Parsing {sorted_cards:?}");
-
-        let jokers = sorted_cards.iter().take_while(|c| **c == 1).count();
-        debug!("Number of jokers: {jokers}");
-
-        match jokers {
-            1 => {
-                let mut highest = Hand::HighCard(vec![2, 2, 2, 2, 2]);
-                for card in &sorted_cards[jokers..] {
-                    let mut replaced = sorted_cards.clone();
-                    replaced[0] = *card;
-                    replaced.sort();
-                    let hand = Hand::get_hand(&replaced, cards.clone());
-                    if hand > highest {
-                        highest = hand;
-                    }
-                }
-
-                Ok(highest)
-            }
-            2 => {
-                let mut highest = Hand::HighCard(vec![2, 2, 2, 2, 2]);
-                for card1 in &sorted_cards[jokers..] {
-                    for card2 in &sorted_cards[jokers..] {
-                        let mut replaced = sorted_cards.clone();
-                        replaced[0] = *card1;
-                        replaced[1] = *card2;
-                        replaced.sort();
-                        let hand = Hand::get_hand(&replaced, cards.clone());
-                        if hand > highest {
-                            highest = hand;
-                        }
-                    }
-                }
-
-                Ok(highest)
-            }
-            3 => {
-                let mut highest = Hand::HighCard(vec![2, 2, 2, 2, 2]);
-                for card1 in &sorted_cards[jokers..] {
-                    for card2 in &sorted_cards[jokers..] {
-                        for card3 in &sorted_cards[jokers..] {
-                            let mut replaced = sorted_cards.clone();
-                            replaced[0] = *card1;
-                            replaced[1] = *card2;
-                            replaced[2] = *card3;
-                            replaced.sort();
-                            let hand = Hand::get_hand(&replaced, cards.clone());
-                            if hand > highest {
-                                highest = hand;
-                            }
-                        }
-                    }
-                }
-
-                Ok(highest)
-            }
-            4 => Ok(Hand::FiveOfAKind(cards)),
-            _ => Ok(Hand::get_hand(&sorted_cards, cards)),
-        }
+fn get_card_value(c: char, j_value: u8) -> Result<u8, HandParseError> {
+    match (c.is_ascii_digit(), c) {
+        (true, _) => Ok(c.to_digit(10).unwrap() as u8),
+        (false, 'A') => Ok(14),
+        (false, 'K') => Ok(13),
+        (false, 'Q') => Ok(12),
+        (false, 'J') => Ok(j_value),
+        (false, 'T') => Ok(10),
+        _ => Err(HandParseError::CardParseError("Card not found {c}")),
     }
 }
 
-fn get_card_value(c: char) -> u8 {
-    if c.is_ascii_digit() {
-        c.to_digit(10).unwrap() as u8
-    } else {
-        match c {
-            'A' => 14,
-            'K' => 13,
-            'Q' => 12,
-            'J' => 1,
-            'T' => 10,
-            _ => panic!("Card not found {c}"),
+fn from_str(
+    s: &str,
+    card_parser: fn(char) -> Result<u8, HandParseError>,
+) -> Result<(HandRank, Vec<u8>), HandParseError> {
+    debug!("Parsing {s}");
+    let cards = s.chars().map(card_parser).collect::<Result<Vec<_>, _>>()?;
+    if cards.len() != 5 {
+        return Err(HandParseError::NotFiveCards);
+    }
+
+    let mut sorted_cards = cards.clone();
+    sorted_cards.sort();
+
+    debug!("Parsing {sorted_cards:?}");
+
+    let jokers = sorted_cards.iter().take_while(|c| **c == 1).count();
+    debug!("Number of jokers: {jokers}");
+
+    let rank = match jokers {
+        1 => {
+            let mut highest = HandRank::HighCard;
+            for card in &sorted_cards[jokers..] {
+                let mut replaced = sorted_cards.clone();
+                replaced[0] = *card;
+                replaced.sort();
+                let rank = HandRank::get_rank(&replaced);
+                if rank > highest {
+                    highest = rank;
+                }
+            }
+            highest
         }
+        2 => {
+            let mut highest = HandRank::HighCard;
+            for card1 in &sorted_cards[jokers..] {
+                for card2 in &sorted_cards[jokers..] {
+                    let mut replaced = sorted_cards.clone();
+                    replaced[0] = *card1;
+                    replaced[1] = *card2;
+                    replaced.sort();
+                    let rank = HandRank::get_rank(&replaced);
+                    if rank > highest {
+                        highest = rank;
+                    }
+                }
+            }
+            highest
+        }
+        3 => {
+            let mut highest = HandRank::HighCard;
+            for card1 in &sorted_cards[jokers..] {
+                for card2 in &sorted_cards[jokers..] {
+                    for card3 in &sorted_cards[jokers..] {
+                        let mut replaced = sorted_cards.clone();
+                        replaced[0] = *card1;
+                        replaced[1] = *card2;
+                        replaced[2] = *card3;
+                        replaced.sort();
+                        let rank = HandRank::get_rank(&replaced);
+                        if rank > highest {
+                            highest = rank;
+                        }
+                    }
+                }
+            }
+            highest
+        }
+        4 | 5 => HandRank::FiveOfAKind,
+        _ => HandRank::get_rank(&sorted_cards),
+    };
+    Ok((rank, cards))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn part1_with_example() {
+        let lines = EXAMPLE.lines().collect::<Vec<_>>();
+        assert_eq!(get_sum_of_bids::<HandWithJacks>(&lines), 6440);
+    }
+
+    #[test]
+    fn part1_with_input() {
+        let lines = INPUT.lines().collect::<Vec<_>>();
+        assert_eq!(get_sum_of_bids::<HandWithJacks>(&lines), 247823654);
+    }
+
+    #[test]
+    fn part2_with_example() {
+        let lines = EXAMPLE.lines().collect::<Vec<_>>();
+        assert_eq!(get_sum_of_bids::<HandWithJokers>(&lines), 5905);
+    }
+
+    #[test]
+    fn part2_with_input() {
+        let lines = INPUT.lines().collect::<Vec<_>>();
+        assert_eq!(get_sum_of_bids::<HandWithJokers>(&lines), 245461700);
     }
 }
