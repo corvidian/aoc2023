@@ -113,7 +113,7 @@ impl HandRank {
         for (_, group) in &sorted_cards.iter().group_by(|card| *card) {
             runs.push(group.count());
         }
-        runs.sort_by(|a, b| b.cmp(&a));
+        runs.sort_by(|a, b| b.cmp(a));
         match (runs.len(), runs[0]) {
             (1, _) => HandRank::FiveOfAKind,
             (2, 4) => HandRank::FourOfAKind,

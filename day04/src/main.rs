@@ -39,14 +39,14 @@ fn main() {
         let counts = counts(aoc.read_input_string());
         let part1 = part1(&counts);
         let part2 = part2(&counts);
-        (part1, part2 as u32)
+        (part1, part2)
     });
 
     // aoc::run_n_times(1000, INPUT, EXAMPLE, |aoc| {
     //     let counts = counts(aoc.read_input_string());
     //     let part1 = part1(&counts);
     //     let part2 = part2(&counts);
-    //     (part1, part2 as u32)
+    //     (part1, part2)
     // });
 }
 

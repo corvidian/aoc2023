@@ -1,5 +1,6 @@
 use log::info;
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -59,9 +60,11 @@ impl Aoc {
     }
 }
 
-pub fn run_with_bench<F>(input: &'static str, example: &'static str, f: &F) -> Duration
+pub fn run_with_bench<F, T1, T2>(input: &'static str, example: &'static str, f: &F) -> Duration
 where
-    F: Fn(&Aoc) -> (u64, u64),
+    F: Fn(&Aoc) -> (T1, T2),
+    T1: Display,
+    T2: Display,
 {
     let aoc = Aoc::init(input, example);
     let now = ::std::time::Instant::now();
@@ -75,18 +78,22 @@ where
     elapsed
 }
 
-fn benchmark<F>(aoc: &Aoc, f: &F) -> Duration
+fn benchmark<F, T1, T2>(aoc: &Aoc, f: &F) -> Duration
 where
-    F: Fn(&Aoc) -> (u32, u32),
+    F: Fn(&Aoc) -> (T1, T2),
+    T1: Display,
+    T2: Display,
 {
     let now = ::std::time::Instant::now();
-    let (_, _) = f(aoc);
+    f(aoc);
     now.elapsed()
 }
 
-pub fn run_n_times<F>(n: usize, input: &'static str, example: &'static str, f: F)
+pub fn run_n_times<F, T1, T2>(n: usize, input: &'static str, example: &'static str, f: F)
 where
-    F: Fn(&Aoc) -> (u32, u32),
+    F: Fn(&Aoc) -> (T1, T2),
+    T1: Display,
+    T2: Display,
 {
     let aoc = Aoc::init(input, example);
     let mut elapsed = benchmark(&aoc, &f);
