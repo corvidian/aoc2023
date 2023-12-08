@@ -29,55 +29,42 @@ fn parse<'a>(lines: &'a [&str]) -> (&'a str, HashMap<&'a str, (&'a str, &'a str)
     (directions, nodes)
 }
 
-fn part1(directions: &str, nodes: &HashMap<&str, (&str, &str)>) -> u32 {
-    let mut dirs = directions.chars().cycle();
-    let mut steps: u32 = 0;
-    let mut current = "AAA";
-    while current != "ZZZ" {
-        let next_dir = dirs.next();
-        debug!("{current} {next_dir:?}");
-        if let Some('L') = next_dir {
-            current = nodes[current].0
-        } else {
-            current = nodes[current].1
-        }
-        steps += 1;
-    }
-
-    steps
+fn part1(directions: &str, nodes: &HashMap<&str, (&str, &str)>) -> u64 {
+    count_steps_to_z("AAA", directions, nodes)
 }
 
 fn part2(directions: &str, nodes: &HashMap<&str, (&str, &str)>) -> u64 {
-    let current = nodes
+    let start_keys = nodes
         .keys()
         .filter(|key| key.ends_with('A'))
-        .map(|a| a.to_owned())
+        .map(|a| a)
         .collect::<Vec<_>>();
-    debug!("Start values: {current:?}");
+    debug!("Start values: {start_keys:?}");
 
-    let cycles = current
-        .iter()
-        .map(|&start| {
-            let mut dirs = directions.chars().cycle();
-            let mut c = start;
-            let mut steps: u64 = 0;
-            while !c.ends_with('Z') {
-                let next_dir = dirs.next();
-                if let Some('L') = next_dir {
-                    c = nodes[c].0
-                } else {
-                    c = nodes[c].1
-                }
-                steps += 1;
-            }
-            steps
-        })
+    let cycles = start_keys
+        .into_iter()
+        .map(|start| count_steps_to_z(start, directions, nodes))
         .inspect(|c| debug!("{c}"))
         .collect::<Vec<u64>>();
 
     debug!("{cycles:?}");
 
     cycles.into_iter().reduce(|a, b| a.lcm(&b)).unwrap()
+}
+
+fn count_steps_to_z(start_key: &str, directions: &str, nodes: &HashMap<&str, (&str, &str)>) -> u64 {
+    let mut dirs = directions.chars().cycle();
+    let mut steps: u64 = 0;
+    let mut current = start_key;
+    while !current.ends_with('Z') {
+        if let Some('L') = dirs.next() {
+            current = nodes[current].0
+        } else {
+            current = nodes[current].1
+        }
+        steps += 1;
+    }
+    steps
 }
 
 #[cfg(test)]
