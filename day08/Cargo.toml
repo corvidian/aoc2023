@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 aoc = { path = "../aoc", features = ["log"] }
 log = "0.4.20"
+num = "0.4.1"
