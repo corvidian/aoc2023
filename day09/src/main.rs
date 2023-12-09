@@ -1,5 +1,5 @@
 use aoc::parse_numbers;
-use log::{debug, info};
+use log::debug;
 
 const INPUT: &str = include_str!("../input.txt");
 const EXAMPLE: &str = include_str!("../example.txt");
@@ -8,7 +8,7 @@ fn main() {
     aoc::run_with_bench(INPUT, EXAMPLE, &|aoc| {
         let lines: Vec<Vec<i64>> = aoc
             .input_lines()
-            .map(|line| parse_numbers::<i64, Vec<_>>(line))
+            .map(parse_numbers::<i64, Vec<_>>)
             .collect();
 
         debug!("{lines:?}");
@@ -18,19 +18,14 @@ fn main() {
 }
 
 fn part1(lines: &[Vec<i64>]) -> i64 {
-     lines.iter().map(|line| history(line)).map(predict).sum()
+    lines.iter().map(|line| history(line)).map(predict).sum()
 }
 
 fn predict(history: Vec<Vec<i64>>) -> i64 {
-    let mut y = history.len()-1;
-    let mut prediction = 0i64;
-    
-    while y > 0 {
-        prediction = history[y-1].last().unwrap() + prediction;
-        //debug!("prediction: {prediction}");
-        y-=1;
-    }
-    prediction
+    history
+        .iter()
+        .rev()
+        .fold(0, |prediction, line| line.last().unwrap() + prediction)
 }
 
 fn history(line: &[i64]) -> Vec<Vec<i64>> {
@@ -41,7 +36,7 @@ fn history(line: &[i64]) -> Vec<Vec<i64>> {
         let next = next_line(&history[i]);
         debug!("{next:?}");
         history.push(next);
-        i = i + 1;
+        i += 1;
     }
     history
 }
@@ -51,21 +46,14 @@ fn next_line(line: &[i64]) -> Vec<i64> {
 }
 
 fn part2(lines: &[Vec<i64>]) -> i64 {
-    lines.iter().map(|line| history(line)).map(extrapolate_history).sum()
+    lines.iter().map(|line| history(line)).map(go_back).sum()
 }
 
-fn extrapolate_history(history: Vec<Vec<i64>>) -> i64 {
-    let mut y = history.len()-1;
-    let mut prediction = 0i64;
-    
-    while y > 0 {
-        let head = history[y-1].first().unwrap();
-        debug!("{head} - {prediction}  = {}", head-prediction );
-        prediction = head - prediction ;
-        debug!("prediction: {prediction}");
-        y-=1;
-    }
-    prediction
+fn go_back(history: Vec<Vec<i64>>) -> i64 {
+    history
+        .iter()
+        .rev()
+        .fold(0, |prediction, line| line.first().unwrap() - prediction)
 }
 
 #[cfg(test)]
@@ -86,7 +74,7 @@ mod tests {
             .lines()
             .map(|line| parse_numbers::<i64, Vec<_>>(line))
             .collect();
-        assert_eq!(part1(&lines), 0);
+        assert_eq!(part1(&lines), 1877825184);
     }
 
     #[test]
@@ -95,7 +83,7 @@ mod tests {
             .lines()
             .map(|line| parse_numbers::<i64, Vec<_>>(line))
             .collect();
-        assert_eq!(part2(&lines), 0);
+        assert_eq!(part2(&lines), 2);
     }
 
     #[test]
@@ -104,6 +92,6 @@ mod tests {
             .lines()
             .map(|line| parse_numbers::<i64, Vec<_>>(line))
             .collect();
-        assert_eq!(part2(&lines), 0);
+        assert_eq!(part2(&lines), 1108);
     }
 }
