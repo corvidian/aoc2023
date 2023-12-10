@@ -55,7 +55,7 @@ impl Pipe {
             BottomRight => [Down, Right],
             Start => return true,
         };
-        dirs.contains(&direction)
+        dirs.contains(direction)
     }
 
     fn can_squeeze_through(&self, dir: &Direction, quadrant: &Quadrant) -> bool {
@@ -228,7 +228,7 @@ fn main() {
         let lines = aoc.input_lines().map(read_line).collect::<Vec<_>>();
 
         for line in &lines {
-            debug!("{}", show_line(&line));
+            debug!("{}", show_line(line));
         }
         let (start_y, start_x, _) = lines
             .iter()
@@ -239,7 +239,10 @@ fn main() {
 
         debug!("{start_y}, {start_x}");
 
-        (0, part2(&lines, start_y, start_x))
+        (
+            part1(&lines, start_y, start_x),
+            part2(&lines, start_y, start_x),
+        )
     });
 }
 
@@ -295,10 +298,10 @@ fn try_move(
     }
 }
 
-fn _part1(map: &[Vec<Option<Pipe>>], start_y: usize, start_x: usize) -> u32 {
+fn part1(map: &[Vec<Option<Pipe>>], start_y: usize, start_x: usize) -> u32 {
     for dir in Direction::iterator() {
         if let Some((y, x)) = try_move(dir, start_y, start_x, map) {
-            let steps = _count_steps_from(map, y, x, &start_y, &start_x, dir);
+            let steps = count_steps_from(map, y, x, &start_y, &start_x, dir);
             debug!("{dir:?}: {steps}");
             return steps / 2 + steps % 2;
         }
@@ -307,7 +310,7 @@ fn _part1(map: &[Vec<Option<Pipe>>], start_y: usize, start_x: usize) -> u32 {
     0
 }
 
-fn _count_steps_from(
+fn count_steps_from(
     map: &[Vec<Option<Pipe>>],
     y: usize,
     x: usize,
@@ -323,7 +326,7 @@ fn _count_steps_from(
         .filter(|d| **d != from_dir.rev())
         .find_map(|dir| try_move(dir, y, x, map).map(|c| (dir, c)))
         .unwrap();
-    _count_steps_from(map, new_y, new_x, start_y, start_x, dir) + 1
+    count_steps_from(map, new_y, new_x, start_y, start_x, dir) + 1
 }
 
 fn part2(input: &[Vec<Option<Pipe>>], start_y: usize, start_x: usize) -> u32 {
@@ -346,7 +349,7 @@ fn part2(input: &[Vec<Option<Pipe>>], start_y: usize, start_x: usize) -> u32 {
     }
 
     for line in &map {
-        debug!("{}", show_line(&line));
+        debug!("{}", show_line(line));
     }
 
     let reachable = dfs_iterative(&map, (0, 0));
@@ -362,7 +365,7 @@ fn part2(input: &[Vec<Option<Pipe>>], start_y: usize, start_x: usize) -> u32 {
     let mut sum = 0;
     for y in 0..map.len() {
         for x in 0..map[0].len() {
-            if map[y][x] == None && !reachable_coords.contains(&(y, x)) {
+            if map[y][x].is_none() && !reachable_coords.contains(&(y, x)) {
                 sum += 1;
             }
         }
