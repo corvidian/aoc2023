@@ -1,0 +1,38 @@
+A.D A.D
+-.- -..
+B.C B|C
+A.D A|D
+-.- -..
+B.C B.C
+
+
+Horizontal:
+. . 
+───
+. .
+
+Vertical: 
+.│.
+ │ 
+.│.
+
+TopLeft:
+.│.
+─┘ 
+. .
+
+TopRight:
+.│.
+ └─ 
+. .
+
+
+BottomRight:
+. .
+ ┌─ 
+.│ .
+
+BottomLeft:
+. .
+─┐ 
+.│ .
