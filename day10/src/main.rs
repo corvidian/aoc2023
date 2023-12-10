@@ -214,22 +214,12 @@ fn read_line(line: &str) -> Vec<Option<Pipe>> {
     line.chars().map(|c| c.try_into().ok()).collect()
 }
 
-fn show_line(line: &[Option<Pipe>]) -> String {
-    line.iter()
-        .map(|o| match o {
-            Some(pipe) => format!("{pipe}"),
-            None => ".".to_string(),
-        })
-        .collect()
-}
-
 fn main() {
     aoc::run_with_bench(INPUT, EXAMPLE, &|aoc| {
         let lines = aoc.input_lines().map(read_line).collect::<Vec<_>>();
 
-        for line in &lines {
-            debug!("{}", show_line(line));
-        }
+        debug!("{}", visualize(&lines, &HashSet::new()));
+
         let (start_y, start_x, _) = lines
             .iter()
             .enumerate()
@@ -237,7 +227,7 @@ fn main() {
             .find(|(_, _, pipe)| pipe == &&Some(Start))
             .unwrap();
 
-        debug!("{start_y}, {start_x}");
+        debug!("Start point: {start_y}, {start_x}");
 
         (
             part1(&lines, start_y, start_x),
@@ -348,14 +338,11 @@ fn part2(input: &[Vec<Option<Pipe>>], start_y: usize, start_x: usize) -> u32 {
         first = false;
     }
 
-    for line in &map {
-        debug!("{}", show_line(line));
-    }
+    debug!("{}", visualize(&map, &HashSet::new()));
 
     let reachable = dfs_iterative(&map, (0, 0));
 
-    println!("After DFS:");
-    visualize(&map, &reachable);
+    debug!("{}", visualize(&map, &reachable));
 
     let reachable_coords = reachable
         .into_iter()
@@ -380,11 +367,12 @@ fn dfs_iterative(
     let mut s = vec![];
     let mut discovered = HashSet::new();
 
-    s.push((v.0, v.1, Quadrant::BottomRight));
+    s.push((v.0, v.1, Quadrant::TopLeft));
     while let Some((y, x, q)) = s.pop() {
         if !discovered.contains(&(y, x, q)) {
             discovered.insert((y, x, q));
-            //visualize(map, &discovered);
+            trace!("Found {y} {x} {q:?}");
+            trace!("{}", visualize(map, &discovered));
             for w in squeezable_edges(map, y, x, &q) {
                 s.push(w);
             }
@@ -393,7 +381,7 @@ fn dfs_iterative(
     discovered
 }
 
-fn visualize(map: &[Vec<Option<Pipe>>], reached: &HashSet<(usize, usize, Quadrant)>) {
+fn visualize(map: &[Vec<Option<Pipe>>], reached: &HashSet<(usize, usize, Quadrant)>) -> String {
     let mut visual = vec![vec!['.'; map[0].len()]; map.len()];
     for y in 0..map.len() {
         for x in 0..map[0].len() {
@@ -403,13 +391,15 @@ fn visualize(map: &[Vec<Option<Pipe>>], reached: &HashSet<(usize, usize, Quadran
     for (y, x, _) in reached {
         visual[*y][*x] = 'O';
     }
-    println!("Visual with found: ");
+
+    let mut chars = vec!['\n'];
     for line in &visual {
         for c in line {
-            print!("{c}");
+            chars.push(*c);
         }
-        println!();
+        chars.push('\n');
     }
+    chars.iter().collect()
 }
 
 fn try_squeeze(
@@ -450,15 +440,7 @@ fn try_squeeze(
         (y, x)
     };
 
-    if let Some(pipe) = map[new_y][new_x] {
-        if pipe.can_squeeze_through(dir, &next_q) {
-            Some((new_y, new_x, next_q))
-        } else {
-            None
-        }
-    } else {
-        Some((new_y, new_x, next_q))
-    }
+    Some((new_y, new_x, next_q))
 }
 
 fn squeezable_edges(
@@ -470,7 +452,7 @@ fn squeezable_edges(
     let reachable = Direction::iterator()
         .filter_map(|dir| try_squeeze(dir, y, x, quadrant, map))
         .collect();
-    debug!("From map coords ({y},{x},{quadrant:?}) we can get to: {reachable:?}");
+    trace!("From map coords ({y},{x},{quadrant:?}) we can get to: {reachable:?}");
     reachable
 }
 
