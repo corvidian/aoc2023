@@ -70,20 +70,17 @@ fn recursive(springs: &[char], missing_indices: &[usize], correct_groups: &[usiz
             return 0;
         }
         ready_groups.pop();
-        if
-        //(ready_groups.len()>0 && ready_groups[0] > correct_groups[0]) ||
-        ready_groups != correct_groups[..ready_groups.len()] {
+        if ready_groups != correct_groups[..ready_groups.len()] {
             //debug!("springs: {} ready groups: {ready_groups:?} correct_groups: {correct_groups:?}", springs.iter().collect::<String>());
-            0
-        } else {
-            let index = missing_indices[0];
-            let mut springs = springs.to_vec();
-            springs[index] = '#';
-            let with_broken = recursive(&springs, &missing_indices[1..], correct_groups);
-            springs[index] = '.';
-            let with_working = recursive(&springs, &missing_indices[1..], correct_groups);
-            with_broken + with_working
+            return 0;
         }
+        let index = missing_indices[0];
+        let mut springs = springs.to_vec();
+        springs[index] = '#';
+        let with_broken = recursive(&springs, &missing_indices[1..], correct_groups);
+        springs[index] = '.';
+        let with_working = recursive(&springs, &missing_indices[1..], correct_groups);
+        with_broken + with_working
     }
 }
 
@@ -124,12 +121,14 @@ fn part2(lines: &[&str]) -> u64 {
             (
                 (springs.to_owned() + "?")
                     .repeat(5)
-                    .trim_end_matches('?')
-                    .to_owned(),
+                    .chars()
+                    .dropping_back(1)
+                    .collect::<String>(),
                 (groups.to_owned() + ",")
                     .repeat(5)
-                    .trim_end_matches(',')
-                    .to_owned(),
+                    .chars()
+                    .dropping_back(1)
+                    .collect::<String>(),
             )
         })
         .collect::<Vec<_>>();
@@ -142,9 +141,9 @@ fn part2(lines: &[&str]) -> u64 {
 
     things
         .iter()
-        .map(|(springs, groups)| (springs, parse_numbers(&groups)))
+        .map(|(springs, groups)| (springs, parse_numbers(groups)))
         .inspect(|(springs, groups)| debug!("{springs:?} {groups:?}"))
-        .map(|(springs, groups)| guess_springs(&springs, groups))
+        .map(|(springs, groups)| guess_springs(springs, groups))
         .inspect(|count| debug!("Count: {count}"))
         .sum()
 }
