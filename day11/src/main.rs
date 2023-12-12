@@ -1,16 +1,19 @@
-use std::collections::{HashSet, VecDeque};
+use std::{collections::HashSet, hash::Hash, usize};
 
-use log::{debug, info};
+use log::debug;
 
 const INPUT: &str = include_str!("../input.txt");
 const EXAMPLE: &str = include_str!("../example.txt");
 
+const MULTIPLIER: usize = 1000000;
+
 fn main() {
     aoc::run_with_bench(INPUT, EXAMPLE, &|aoc| {
-        let lines = aoc
+        let mut lines = aoc
             .input_lines()
             .map(|line| line.chars().collect::<Vec<_>>())
             .collect::<Vec<_>>();
+
         let columns = (0..lines[0].len()).collect::<HashSet<usize>>();
         let positions = lines
             .iter()
@@ -21,7 +24,10 @@ fn main() {
                     .map(|(i, _)| i)
             })
             .collect::<HashSet<_>>();
-        let empty_columns = columns.difference(&positions).collect::<HashSet<_>>();
+        let empty_columns = columns
+            .difference(&positions)
+            .cloned()
+            .collect::<HashSet<_>>();
         debug!("empty_columns: {empty_columns:?}");
 
         let rows = (0..lines[0].len()).collect::<HashSet<usize>>();
@@ -31,30 +37,15 @@ fn main() {
             .filter(|(_, line)| line.contains(&'#'))
             .map(|(i, _)| i)
             .collect::<HashSet<_>>();
-        let empty_rows = rows.difference(&positions).collect::<HashSet<_>>();
+        let empty_rows = rows.difference(&positions).cloned().collect::<HashSet<_>>();
         debug!("empty_rows: {empty_rows:?}");
 
-        let mut map =
-            vec![vec!['.'; lines[0].len() + empty_columns.len()]; lines.len() + empty_rows.len()];
+        debug!("{}", visualize(&lines));
 
-        let mut map_y = 0;
-        for orig_y in 0..lines.len() {
-            if empty_rows.contains(&orig_y) {
-                map_y += 1
-            };
-            let mut map_x = 0;
-            for orig_x in 0..lines[orig_y].len() {
-                if empty_columns.contains(&orig_x) {
-                    map_x += 1
-                };
-                map[map_y][map_x] = lines[orig_y][orig_x];
-                map_x += 1;
-            }
-            map_y += 1;
-        }
-        debug!("{}", visualize(&map));
-
-        (part1(&mut map), part2(&map))
+        (
+            part1(&mut lines.clone(), &empty_columns, &empty_rows),
+            part2(&mut lines, &empty_columns, &empty_rows),
+        )
     });
 }
 
@@ -69,15 +60,36 @@ fn visualize(map: &[Vec<char>]) -> String {
     chars.iter().collect()
 }
 
-fn part1(map: &mut [Vec<char>]) -> u32 {
-    let mut sum = 0u32;
+fn part1(
+    map: &mut [Vec<char>],
+    empty_columns: &HashSet<usize>,
+    empty_rows: &HashSet<usize>,
+) -> u64 {
+    sum_distances(map, empty_columns, empty_rows, &2)
+}
+
+fn sum_distances(
+    map: &mut [Vec<char>],
+    empty_columns: &HashSet<usize>,
+    empty_rows: &HashSet<usize>,
+    multiplier: &usize,
+) -> u64 {
+    let mut sum = 0u64;
     for y in 0..map.len() {
         for x in 0..map[y].len() {
             if map[y][x] == '#' {
-                for dist in bfs(map, Coords::new(y, x)) {
+                for dist in distances_from(
+                    map,
+                    Coords::new(y, x),
+                    empty_columns,
+                    empty_rows,
+                    multiplier,
+                ) {
                     sum += dist;
                 }
                 map[y][x] = '.';
+                debug!("sum: {sum}");
+                debug!("{}", visualize(&map));
             }
         }
     }
@@ -94,63 +106,65 @@ impl Coords {
     fn new(y: usize, x: usize) -> Coords {
         Coords { y, x }
     }
-
-    fn with_y(&self, new_y: usize) -> Coords {
-        Coords {
-            y: new_y,
-            x: self.x,
-        }
-    }
-
-    fn with_x(&self, new_x: usize) -> Coords {
-        Coords {
-            y: self.y,
-            x: new_x,
-        }
-    }
 }
 
-fn bfs(map: &[Vec<char>], root: Coords) -> Vec<u32> {
+fn distances_from(
+    map: &[Vec<char>],
+    root: Coords,
+    empty_columns: &HashSet<usize>,
+    empty_rows: &HashSet<usize>,
+    multiplier: &usize,
+) -> Vec<u64> {
     let mut dists = vec![];
-    let mut Q = VecDeque::new();
-    let mut explored = HashSet::new();
-    Q.push_back((root, 0));
-    explored.insert(root);
-    while let Some(v) = Q.pop_front() {
-        if map[v.0.y][v.0.x] == '#' {
-            debug!("{} {} -> {} {}: {}", root.y, root.x, v.0.y, v.0.x, v.1);
-            dists.push(v.1)
-        }
-        for w in adjacent_edges(map, &v.0) {
-            if !explored.contains(&w) {
-                explored.insert(w);
-                Q.push_back((w, v.1 + 1));
+    for y in 0..map.len() {
+        for x in 0..map[y].len() {
+            if map[y][x] == '#' {
+                let dist = distance(
+                    &root,
+                    &Coords::new(y, x),
+                    empty_columns,
+                    empty_rows,
+                    multiplier,
+                );
+                debug!("{} {} -> {} {}: {}", root.y, root.x, y, x, dist);
+                dists.push(dist)
             }
         }
     }
-    debug!("dists count: {}", dists.len());
     dists
 }
 
-fn adjacent_edges(map: &[Vec<char>], v: &Coords) -> Vec<Coords> {
-    let mut coords = vec![];
-    if v.y != 0 {
-        coords.push(v.with_y(v.y - 1));
-    }
-    if v.y < map.len() - 1 {
-        coords.push(v.with_y(v.y + 1));
-    }
-    if v.x != 0 {
-        coords.push(v.with_x(v.x - 1));
-    }
-    if v.x < map[v.y].len() - 1 {
-        coords.push(v.with_x(v.x + 1));
-    }
-    coords
+fn distance(
+    start: &Coords,
+    end: &Coords,
+    empty_columns: &HashSet<usize>,
+    empty_rows: &HashSet<usize>,
+    multiplier: &usize,
+) -> u64 {
+    let expanded_rows = empty_rows
+        .iter()
+        .filter(|y| (start.y.min(end.y)..start.y.max(end.y)).contains(y))
+        .count();
+    let expanded_columns = empty_columns
+        .iter()
+        .filter(|x| (start.x.min(end.x)..start.x.max(end.x)).contains(x))
+        .count();
+
+    debug!("expanded_rows {expanded_rows:?}");
+    debug!("expanded_columns {expanded_columns:?}");
+
+    (start.y.abs_diff(end.y)
+        + expanded_rows * (multiplier-1)
+        + start.x.abs_diff(end.x)
+        + expanded_columns * (multiplier-1)) as u64
 }
 
-fn part2(_lines: &[Vec<char>]) -> u32 {
-    0
+fn part2(
+    map: &mut [Vec<char>],
+    empty_columns: &HashSet<usize>,
+    empty_rows: &HashSet<usize>,
+) -> u64 {
+    sum_distances(map, empty_columns, empty_rows, &MULTIPLIER)
 }
 
 #[cfg(test)]
