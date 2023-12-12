@@ -10,10 +10,10 @@ pub fn init_logging(term: LevelFilter, file: LevelFilter) {
     let filename = get_filename();
     let filename = filename.split_once('.').unwrap().0;
     let mut i = 1;
-    while Path::new(&format!("target/log/{filename}_{i}.log")).exists() {
+    while Path::new(&format!("target/log/{filename}_{i}.txt")).exists() {
         i += 1;
     }
-    let filename = format!("target/log/{filename}_{i}.log");
+    let filename = format!("target/log/{filename}_{i}.txt");
     let config = ConfigBuilder::new()
         .set_time_offset_to_local()
         .expect("Local timezone not found")

@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use log::{debug, info};
+use log::debug;
 
 const INPUT: &str = include_str!("../input.txt");
 const EXAMPLE: &str = include_str!("../example.txt");
@@ -12,7 +12,7 @@ fn main() {
     });
 }
 
-fn _count_permutations(lines: &[&str]) {
+fn count_permutations(lines: &[&str]) {
     let mut max = 0;
     let mut sum: u64 = 0;
     for line in lines {
@@ -60,13 +60,19 @@ fn recursive(springs: &[char], missing_indices: &[usize], correct_groups: &[usiz
             0
         }
     } else {
-        let ready_groups = count_groups_until_unknown(springs);
-        if  (ready_groups.len()>0 && ready_groups[0] > correct_groups[0]) || !ready_groups
-            .iter()
-            .dropping_back(1)
-            .enumerate()
-            .all(|(i, group)| i < correct_groups.len() && *group == correct_groups[i])                       
+        let mut ready_groups = count_groups_until_unknown(springs);
+        if ready_groups.len() > correct_groups.len() {
+            return 0;
+        }
+        if !ready_groups.is_empty()
+            && ready_groups.last().unwrap() > &correct_groups[ready_groups.len() - 1]
         {
+            return 0;
+        }
+        ready_groups.pop();
+        if
+        //(ready_groups.len()>0 && ready_groups[0] > correct_groups[0]) ||
+        ready_groups != correct_groups[..ready_groups.len()] {
             //debug!("springs: {} ready groups: {ready_groups:?} correct_groups: {correct_groups:?}", springs.iter().collect::<String>());
             0
         } else {
@@ -111,15 +117,36 @@ fn parse_numbers(groups: &str) -> Vec<usize> {
 }
 
 fn part2(lines: &[&str]) -> u64 {
-    lines
-    .iter()
-    .map(|line| line.split_once(' ').unwrap())
-    .map(|(springs, groups)| ((springs.to_owned()+"?").repeat(5).trim_end_matches('?').to_owned(), (groups.to_owned()+",").repeat(5).trim_end_matches(',').to_owned()))
-    .map(|(springs, groups)| (springs, parse_numbers(&groups)))
-    .inspect(|(springs, groups)| debug!("{springs:?} {groups:?}"))
-    .map(|(springs, groups)| guess_springs(&springs, groups))
-    .inspect(|count| debug!("Count: {count}"))
-    .sum()
+    let things = lines
+        .iter()
+        .map(|line| line.split_once(' ').unwrap())
+        .map(|(springs, groups)| {
+            (
+                (springs.to_owned() + "?")
+                    .repeat(5)
+                    .trim_end_matches('?')
+                    .to_owned(),
+                (groups.to_owned() + ",")
+                    .repeat(5)
+                    .trim_end_matches(',')
+                    .to_owned(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let springs = things
+        .iter()
+        .map(|(springs, _)| &springs[..])
+        .collect::<Vec<_>>();
+    count_permutations(&springs);
+
+    things
+        .iter()
+        .map(|(springs, groups)| (springs, parse_numbers(&groups)))
+        .inspect(|(springs, groups)| debug!("{springs:?} {groups:?}"))
+        .map(|(springs, groups)| guess_springs(&springs, groups))
+        .inspect(|count| debug!("Count: {count}"))
+        .sum()
 }
 
 #[cfg(test)]
