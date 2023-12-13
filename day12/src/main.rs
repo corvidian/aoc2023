@@ -1,5 +1,7 @@
 use itertools::Itertools;
-use log::debug;
+use log::{debug, info};
+use rayon::prelude::*;
+use std::usize;
 
 const INPUT: &str = include_str!("../input.txt");
 const EXAMPLE: &str = include_str!("../example.txt");
@@ -12,110 +14,22 @@ fn main() {
     });
 }
 
-fn count_permutations(lines: &[&str]) {
-    let mut max = 0;
-    let mut sum: u64 = 0;
-    for line in lines {
-        let count = line.chars().filter(|c| *c == '?').count();
-        if count > max {
-            max = count
-        }
-        sum += 1u64 << count;
-    }
-    debug!("Sum of permutations: {sum}");
-    debug!("Max number of ?: {max}");
-}
-
 fn part1(lines: &[&str]) -> u64 {
-    lines
-        .iter()
+    let result = lines
+        .par_iter()
         .map(|line| line.split_once(' ').unwrap())
         .map(|(springs, groups)| (springs, parse_numbers(groups)))
         //.inspect(|(springs, groups)| debug!("{springs:?} {groups:?}"))
-        .map(|(springs, groups)| guess_springs(springs, groups))
-        .sum()
-}
-
-fn guess_springs(springs: &str, groups: Vec<usize>) -> u64 {
-    let missing_indices = springs
-        .char_indices()
-        .filter(|(_, c)| *c == '?')
-        .map(|(i, _)| i)
-        .collect::<Vec<_>>();
-
-    recursive(
-        &springs.chars().collect::<Vec<_>>(),
-        &missing_indices,
-        &groups,
-    )
-}
-
-fn recursive(springs: &[char], missing_indices: &[usize], correct_groups: &[usize]) -> u64 {
-    if missing_indices.is_empty() {
-        let counts = count_groups(springs);
-        //debug!("springs: {} ready groups: {counts:?} correct_groups: {correct_groups:?}", springs.iter().collect::<String>());
-        if counts == correct_groups {
-            1
-        } else {
-            0
-        }
-    } else {
-        let mut ready_groups = count_groups_until_unknown(springs);
-        if ready_groups.len() > correct_groups.len() {
-            return 0;
-        }
-        if !ready_groups.is_empty()
-            && ready_groups.last().unwrap() > &correct_groups[ready_groups.len() - 1]
-        {
-            return 0;
-        }
-        ready_groups.pop();
-        if ready_groups != correct_groups[..ready_groups.len()] {
-            //debug!("springs: {} ready groups: {ready_groups:?} correct_groups: {correct_groups:?}", springs.iter().collect::<String>());
-            return 0;
-        }
-        let index = missing_indices[0];
-        let mut springs = springs.to_vec();
-        springs[index] = '#';
-        let with_broken = recursive(&springs, &missing_indices[1..], correct_groups);
-        springs[index] = '.';
-        let with_working = recursive(&springs, &missing_indices[1..], correct_groups);
-        with_broken + with_working
-    }
-}
-
-fn count_groups_until_unknown(springs: &[char]) -> Vec<usize> {
-    springs
-        .iter()
-        .take_while(|c| **c != '?')
-        //.copied()
-        .group_by(|c| **c == '#')
-        .into_iter()
-        .filter(|(broken, _)| *broken)
-        .map(|(_, a)| a.count())
-        .collect()
-}
-
-fn count_groups(springs: &[char]) -> Vec<usize> {
-    springs
-        .iter()
-        .group_by(|c| **c == '#')
-        .into_iter()
-        .filter(|(broken, _)| *broken)
-        .map(|(_, a)| a.count())
-        .collect()
-}
-
-fn parse_numbers(groups: &str) -> Vec<usize> {
-    groups
-        .split(',')
-        .map(|n| n.parse::<usize>().unwrap())
-        .collect::<Vec<_>>()
+        .map(|(springs, groups)| guess_springs(springs, &groups))
+        //.inspect(|count| debug!("Count: {count}"))
+        .sum();
+    info!("Part 1: {result}");
+    result
 }
 
 fn part2(lines: &[&str]) -> u64 {
-    let things = lines
-        .iter()
+    lines
+        .par_iter()
         .map(|line| line.split_once(' ').unwrap())
         .map(|(springs, groups)| {
             (
@@ -131,21 +45,119 @@ fn part2(lines: &[&str]) -> u64 {
                     .collect::<String>(),
             )
         })
-        .collect::<Vec<_>>();
-
-    let springs = things
-        .iter()
-        .map(|(springs, _)| &springs[..])
-        .collect::<Vec<_>>();
-    count_permutations(&springs);
-
-    things
-        .iter()
-        .map(|(springs, groups)| (springs, parse_numbers(groups)))
+        .map(|(springs, groups)| (springs, parse_numbers(&groups)))
         .inspect(|(springs, groups)| debug!("{springs:?} {groups:?}"))
-        .map(|(springs, groups)| guess_springs(springs, groups))
+        .map(|(_springs, _groups)| guess_springs(&_springs, &_groups)) // guess_springs(&springs, &groups))
         .inspect(|count| debug!("Count: {count}"))
         .sum()
+}
+
+fn guess_springs(springs: &str, groups: &[usize]) -> u64 {
+    let size = springs.len();
+    let empties = size - groups.iter().sum::<usize>();
+    (0..empties)
+        .filter(|i| !springs[0..*i].contains('#'))
+        .map(|i| recursive(springs, groups, &mut vec![i], i, i, &empties))
+        .sum()
+}
+
+fn recursive(
+    springs: &str,
+    groups: &[usize],
+    spaces: &[usize],
+    number_of_spaces: usize,
+    number_of_all_springs: usize,
+    empties: &usize,
+) -> u64 {
+    //debug!("Recursive: springs: {springs}, groups: {groups:?}, spaces: {spaces:?}, number_of_spaces: {number_of_spaces}, number_of_all_springs: {number_of_all_springs}, empties: {empties}");
+
+    if spaces.len() == groups.len() {
+        let reconstructed = (0..spaces.len())
+            .flat_map(|i| vec![vec!['.'; spaces[i]], vec!['#'; groups[i]]])
+            .flatten()
+            .collect::<Vec<char>>();
+
+        let matches = springs.chars().enumerate().all(|(i, c)| match c {
+            '?' => true,
+            '#' => reconstructed.len() > i && reconstructed[i] == '#',
+            '.' => reconstructed.len() <= i || reconstructed[i] == '.',
+            _ => panic!("Unknown spring {c}"),
+        });
+
+        //debug!("matches: {matches}, reconstructed {reconstructed:?}");
+
+        if matches {
+            return 1;
+        } else {
+            return 0;
+        }
+
+        //return 1;
+    }
+    let next_group = groups[spaces.len() - 1];
+    if springs[number_of_all_springs..number_of_all_springs + next_group].contains('.') {
+        /*
+        let reconstructed = (0..spaces.len())
+            .flat_map(|i| vec![vec!['.'; spaces[i]], vec!['#'; groups[i]]])
+            .flatten()
+            .collect::<Vec<char>>();
+        debug!("{reconstructed:?}");
+
+        debug!("1st branch Pruning branches starting with {spaces:?} + {i}");
+        debug!(
+            "{:?},{}",
+            number_of_all_springs..number_of_all_springs + next_group,
+            &springs[number_of_all_springs..=number_of_all_springs + i]
+        );
+        */
+        return 0;
+    }
+    let mut spaces = spaces.to_vec();
+    (1..=(empties - number_of_spaces))
+        .map(|i| {
+            if springs[number_of_all_springs + next_group..number_of_all_springs + next_group + i]
+                .contains('#')
+            {
+                /*
+
+                                let reconstructed = (0..spaces.len())
+                                .flat_map(|i| vec![vec!['.'; spaces[i]], vec!['#'; groups[i]]])
+                                .flatten()
+                                .collect::<Vec<char>>();
+                            debug!("{reconstructed:?}");
+                                debug!("2nd branch Pruning branches starting with {spaces:?} + {i}");
+                                debug!(
+                                    "{}, {}, {:?},{}",
+                                    (number_of_all_springs + next_group),
+                                    number_of_all_springs + next_group + i,
+                                    number_of_all_springs + next_group..number_of_all_springs + next_group + i,
+                                    &springs[number_of_all_springs + next_group
+                                        ..number_of_all_springs + next_group + i]
+                                );
+                */
+                0
+            } else {
+                spaces.push(i);
+                let a = recursive(
+                    springs,
+                    groups,
+                    &spaces,
+                    number_of_spaces + i,
+                    number_of_all_springs + i + groups[spaces.len() - 2],
+                    empties,
+                );
+                spaces.pop();
+                a
+            }
+        })
+        .sum()
+}
+
+fn parse_numbers(groups: &str) -> Vec<usize> {
+    groups
+        .split(',')
+        .map(|n| n.parse::<usize>().unwrap())
+        .collect::<Vec<_>>()
 }
 
 #[cfg(test)]
@@ -153,24 +165,6 @@ mod tests {
     use super::*;
 
     const PERFECT_RECORD: &str = include_str!("../perfect-records.txt");
-
-    #[test]
-    fn test_count_groups() {
-        let pairs: Vec<(Vec<usize>, Vec<usize>)> = PERFECT_RECORD
-            .lines()
-            .map(|line| line.split_once(' ').unwrap())
-            .map(|(springs, groups)| {
-                (
-                    count_groups(&springs.chars().collect::<Vec<_>>()),
-                    parse_numbers(groups),
-                )
-            })
-            .collect();
-
-        for pair in pairs {
-            assert_eq!(pair.0, pair.1)
-        }
-    }
 
     #[test]
     fn part1_with_example() {
