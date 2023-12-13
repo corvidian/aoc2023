@@ -55,14 +55,15 @@ fn part2(lines: &[&str]) -> u64 {
 fn guess_springs(springs: &str, groups: &[usize]) -> u64 {
     let size = springs.len();
     let empties = size - groups.iter().sum::<usize>();
+    let springs = springs.chars().collect::<Vec<_>>();
     (0..empties)
-        .filter(|i| !springs[0..*i].contains('#'))
-        .map(|i| recursive(springs, groups, &mut vec![i], i, i, &empties))
+        .filter(|i| !springs[0..*i].contains(&'#'))
+        .map(|i| recursive(&springs, groups, &[i], i, i, &empties))
         .sum()
 }
 
 fn recursive(
-    springs: &str,
+    springs: &[char],
     groups: &[usize],
     spaces: &[usize],
     number_of_spaces: usize,
@@ -70,32 +71,35 @@ fn recursive(
     empties: &usize,
 ) -> u64 {
     //debug!("Recursive: springs: {springs}, groups: {groups:?}, spaces: {spaces:?}, number_of_spaces: {number_of_spaces}, number_of_all_springs: {number_of_all_springs}, empties: {empties}");
+    let next_group = groups[spaces.len() - 1];
 
     if spaces.len() == groups.len() {
-        let reconstructed = (0..spaces.len())
-            .flat_map(|i| vec![vec!['.'; spaces[i]], vec!['#'; groups[i]]])
-            .flatten()
-            .collect::<Vec<char>>();
+        /*
+               let reconstructed = (0..spaces.len())
+                   .flat_map(|i| vec![vec!['.'; spaces[i]], vec!['#'; groups[i]]])
+                   .flatten()
+                   .collect::<Vec<char>>();
 
-        let matches = springs.chars().enumerate().all(|(i, c)| match c {
-            '?' => true,
-            '#' => reconstructed.len() > i && reconstructed[i] == '#',
-            '.' => reconstructed.len() <= i || reconstructed[i] == '.',
-            _ => panic!("Unknown spring {c}"),
-        });
+               let matches = springs.iter().enumerate().all(|(i, c)| match c {
+                   '?' => true,
+                   '#' => reconstructed.len() > i && reconstructed[i] == '#',
+                   '.' => reconstructed.len() <= i || reconstructed[i] == '.',
+                   _ => panic!("Unknown spring {c}"),
+               });
 
-        //debug!("matches: {matches}, reconstructed {reconstructed:?}");
+               //debug!("matches: {matches}, reconstructed {reconstructed:?}");
+        */
 
-        if matches {
-            return 1;
-        } else {
+        if springs[number_of_all_springs..number_of_all_springs + next_group].contains(&'.') {
+            return 0;
+        }
+        if springs[number_of_all_springs + next_group..].contains(&'#') {
             return 0;
         }
 
-        //return 1;
+        return 1;
     }
-    let next_group = groups[spaces.len() - 1];
-    if springs[number_of_all_springs..number_of_all_springs + next_group].contains('.') {
+    if springs[number_of_all_springs..number_of_all_springs + next_group].contains(&'.') {
         /*
         let reconstructed = (0..spaces.len())
             .flat_map(|i| vec![vec!['.'; spaces[i]], vec!['#'; groups[i]]])
@@ -113,28 +117,26 @@ fn recursive(
         return 0;
     }
     let mut spaces = spaces.to_vec();
+    let mut stop = false;
     (1..=(empties - number_of_spaces))
         .map(|i| {
-            if springs[number_of_all_springs + next_group..number_of_all_springs + next_group + i]
-                .contains('#')
-            {
+            if stop || springs[number_of_all_springs + next_group + i - 1] == '#' {
                 /*
-
-                                let reconstructed = (0..spaces.len())
-                                .flat_map(|i| vec![vec!['.'; spaces[i]], vec!['#'; groups[i]]])
-                                .flatten()
-                                .collect::<Vec<char>>();
-                            debug!("{reconstructed:?}");
-                                debug!("2nd branch Pruning branches starting with {spaces:?} + {i}");
-                                debug!(
-                                    "{}, {}, {:?},{}",
-                                    (number_of_all_springs + next_group),
-                                    number_of_all_springs + next_group + i,
-                                    number_of_all_springs + next_group..number_of_all_springs + next_group + i,
-                                    &springs[number_of_all_springs + next_group
-                                        ..number_of_all_springs + next_group + i]
-                                );
+                let reconstructed = (0..spaces.len())
+                .flat_map(|i| vec![vec!['.'; spaces[i]], vec!['#'; groups[i]]])
+                .flatten()
+                .collect::<Vec<char>>();
+                debug!("{reconstructed:?}");
+                debug!("2nd branch Pruning branches starting with {spaces:?} + {i}");
+                debug!(
+                    "{}, {}, {:?},{:?}",
+                    (number_of_all_springs + next_group),
+                    number_of_all_springs + next_group + i,
+                    number_of_all_springs + next_group..number_of_all_springs + next_group + i,
+                    &springs[number_of_all_springs + next_group..number_of_all_springs + next_group + i]
+                );
                 */
+                stop = true;
                 0
             } else {
                 spaces.push(i);
