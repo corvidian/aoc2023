@@ -4,6 +4,7 @@ use rayon::prelude::*;
 use std::usize;
 
 const INPUT: &str = include_str!("../input.txt");
+//const INPUT: &str = include_str!("../example.txt");
 const EXAMPLE: &str = include_str!("../example.txt");
 
 fn main() {
@@ -16,7 +17,7 @@ fn main() {
 
 fn part1(lines: &[&str]) -> u64 {
     let result = lines
-        .par_iter()
+        .iter()
         .map(|line| line.split_once(' ').unwrap())
         .map(|(springs, groups)| (springs, parse_numbers(groups)))
         //.inspect(|(springs, groups)| debug!("{springs:?} {groups:?}"))
@@ -56,24 +57,25 @@ fn guess_springs(springs: &str, groups: &[usize]) -> u64 {
     let size = springs.len();
     let empties = size - groups.iter().sum::<usize>();
     let springs = springs.chars().collect::<Vec<_>>();
-    (0..empties)
+
+    (0..empties).into_par_iter()
         .filter(|i| !springs[0..*i].contains(&'#'))
-        .map(|i| recursive(&springs, groups, &[i], i, i, &empties))
+        .map(|i| recursive(&springs, groups, 1, i, i, &empties))
         .sum()
 }
 
 fn recursive(
     springs: &[char],
     groups: &[usize],
-    spaces: &[usize],
+    spaces: usize,
     number_of_spaces: usize,
     number_of_all_springs: usize,
     empties: &usize,
 ) -> u64 {
     //debug!("Recursive: springs: {springs}, groups: {groups:?}, spaces: {spaces:?}, number_of_spaces: {number_of_spaces}, number_of_all_springs: {number_of_all_springs}, empties: {empties}");
-    let next_group = groups[spaces.len() - 1];
+    let next_group = groups[spaces - 1];
 
-    if spaces.len() == groups.len() {
+    if spaces == groups.len() {
         /*
                let reconstructed = (0..spaces.len())
                    .flat_map(|i| vec![vec!['.'; spaces[i]], vec!['#'; groups[i]]])
@@ -116,7 +118,6 @@ fn recursive(
         */
         return 0;
     }
-    let mut spaces = spaces.to_vec();
     let mut stop = false;
     (1..=(empties - number_of_spaces))
         .map(|i| {
@@ -139,17 +140,14 @@ fn recursive(
                 stop = true;
                 0
             } else {
-                spaces.push(i);
-                let a = recursive(
+                recursive(
                     springs,
                     groups,
-                    &spaces,
+                    spaces + 1,
                     number_of_spaces + i,
-                    number_of_all_springs + i + groups[spaces.len() - 2],
+                    number_of_all_springs + i + groups[spaces - 1],
                     empties,
-                );
-                spaces.pop();
-                a
+                )
             }
         })
         .sum()

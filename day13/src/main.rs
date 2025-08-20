@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::cmp::{min, max};
 
 use log::{debug, info};
 use itertools::Itertools;
@@ -18,36 +18,15 @@ fn main() {
 
 fn part1(lines: &[&str]) -> u64 {
     
-    let groups = lines.into_iter().group_by(|a| a.is_empty())
-    .into_iter()
-    .filter(|(empty, _)| !empty)
-    .map(|(_, group)| group.collect::<Vec<_>>())
-    .collect::<Vec<_>>();
-
-    let mut sum: u64 = 0;
-    
-    for group in groups {
-        for &line in &group {
-            debug!("{line}");
-        }
-        let group2 = group.into_iter().map(|line| line.chars().collect::<Vec<_>>()).collect::<Vec<_>>();
-        let vertical_value = check_mirror_vertical(&group2);
-        let horizontal_value = check_mirror_horizontal(&group2);
-        //debug!("{vertical_value:?}");
-        //debug!("{:?}", horizontal_value.map(|v|v*100));
-        if let Some(v) = vertical_value {
-            sum += v as u64;
-        }
-        if let Some(h) = horizontal_value {
-            sum += (h as u64)*100;
-        }
-    }
-    sum
+0
 }
 
-fn check_mirror_vertical(pattern: &[Vec<char>]) -> Option<usize> {
-    for x in 1..pattern[0].len() {
+fn check_mirror_vertical(pattern: &[Vec<char>], must_include_column: usize) -> Option<usize> {
+    let start = max(1, must_include_column/2+must_include_column%2);
+    let end = min(pattern[0].len(), (pattern[0].len()+must_include_column)/2);
+    for x in start..end {
         if check_mirror_vertical_for_x(pattern, x) {
+            debug!("{start}..{end}, must: {must_include_column}, dividor: {x}, pattern len: {}",pattern.len());
             return Some(x);
         }
     }
@@ -66,9 +45,12 @@ fn check_mirror_vertical_for_x(pattern: &[Vec<char>], dividor:usize) -> bool {
     true
 }
 
-fn check_mirror_horizontal(pattern: &[Vec<char>]) -> Option<usize> {
-    for y in 1..pattern.len() {
+fn check_mirror_horizontal(pattern: &[Vec<char>], must_include_row: usize) -> Option<usize> {
+    let start = max(1, must_include_row/2+must_include_row%2);
+    let end = min(pattern.len(), (pattern.len()+must_include_row)/2+1);
+    for y in start..end {
         if check_mirror_horizontal_for_y(pattern, y) {
+            debug!("{start}..{end}, must: {must_include_row}, dividor: {y}, pattern len: {}",pattern.len());
             return Some(y);
         }
     }
@@ -102,19 +84,38 @@ fn part2(lines: &[&str]) -> u64 {
         for &line in &group {
             debug!("{line}");
         }
-        let group2 = group.into_iter().map(|line| line.chars().collect::<Vec<_>>()).collect::<Vec<_>>();
-        let vertical_value = check_mirror_vertical(&group2);
-        let horizontal_value = check_mirror_horizontal(&group2);
-        //debug!("{vertical_value:?}");
-        //debug!("{:?}", horizontal_value.map(|v|v*100));
-        if let Some(h) = vertical_value {
-            sum += h as u64;
-        }
-        if let Some(v) = horizontal_value {
-            sum += (v as u64)*100;
-        }
+        let group = group.into_iter().map(|line| line.chars().collect::<Vec<_>>()).collect::<Vec<_>>();
+        sum += find_smudge(group);
     }
     sum
+}
+
+fn find_smudge(mut group: Vec<Vec<char>>) -> u64{
+    for y in 0..group.len() {
+        for x in 0..group[y].len() {
+            let c = group[y][x];
+            group[y][x] = if c=='.' {'#'} else {'.'};
+            let vertical_value = check_mirror_vertical(&group, x);
+            debug!("{y},{x}");
+            if let Some(h) = vertical_value {
+                for line in &group {
+                        debug!("{}",line.iter().collect::<String>());
+                    }
+                    debug!("{vertical_value:?}");
+                    return h as u64;
+            }
+            let horizontal_value = check_mirror_horizontal(&group, y);
+            if let Some(v) = horizontal_value {
+                for line in &group {
+                    debug!("{}",line.iter().collect::<String>());
+                }
+                debug!("{:?}", horizontal_value.map(|v|v*100));
+                return (v as u64)*100;
+            }
+            group[y][x] = c;
+        }
+    }
+    0
 }
 
 #[cfg(test)]
